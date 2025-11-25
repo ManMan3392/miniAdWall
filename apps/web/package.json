@@ -11,11 +11,15 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@ant-design/cssinjs": "^2.0.1",
     "@ant-design/icons": "^6.1.0",
     "antd": "^5.29.0",
+    "axios": "^1.13.2",
     "normalize.css": "^8.0.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-virtuoso": "^4.14.1",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@babel/parser": "^7.28.5",
@@ -26,8 +30,8 @@
     "@eslint/js": "^9.36.0",
     "@types/babel__traverse": "^7.28.0",
     "@types/node": "^24.6.0",
-    "@types/react": "^18.2.21",
-    "@types/react-dom": "^18.2.7",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react-swc": "^4.1.0",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
@@ -47,8 +51,5 @@
     "vite": "^7.1.7",
     "vite-plugin-eslint": "^1.8.1",
     "vite-plugin-stylelint": "^6.0.2"
-  },
-  "pnpm": {
-    "shamefullyHoist": true
   }
 }

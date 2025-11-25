@@ -1,0 +1,21 @@
+.container {
+  position: relative;
+  padding: 35px;
+  background-color: rgb(255 255 255);
+
+  /* 使用流式宽度由父级网格控制，移除 vw 固定值 */
+  width: 100%;
+
+  /* 改为自动高度并提供最小高度近似原 35vh (~380px) */
+  min-height: 380px;
+  font-size: 20px;
+
+
+  .ad-content {
+    /* 4vh ≈ 43px，取 2.7rem 近似 */
+    margin-top: 2.7rem;
+    color: rgb(100 100 100);
+  }
+
+  
+}

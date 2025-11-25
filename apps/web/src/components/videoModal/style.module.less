@@ -1,0 +1,64 @@
+.video-modal {
+  :global(.ant-modal-content) {
+    padding: 0;
+    background: #000;
+  }
+
+  :global(.ant-modal-close) {
+    color: #fff;
+
+    &:hover {
+      background-color: rgb(255 255 255 / 10%);
+    }
+  }
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  z-index: 20;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 12%);
+  transition: background 0.2s;
+  user-select: none;
+
+  &:hover {
+    background: rgb(255 255 255 / 25%);
+  }
+}
+
+.video {
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  display: block;
+}
+
+.tip {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(0 0 0 / 80%);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 10;
+}
