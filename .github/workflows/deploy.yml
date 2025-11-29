@@ -67,3 +67,72 @@ jobs:
 
             # Persist process list for startup
             pm2 save || true
+name: Deploy to VPS via SSH
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare deploy key
+        run: |
+          # Write deploy key into the workflow workspace so container actions can read it
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > "$GITHUB_WORKSPACE/deploy_key"
+          chmod 600 "$GITHUB_WORKSPACE/deploy_key"
+
+      - name: Debug: verify deploy key file
+        run: |
+          echo '=== Workspace listing ==='
+          ls -la "$GITHUB_WORKSPACE" || true
+          echo '=== deploy_key info ==='
+          if [ -f "$GITHUB_WORKSPACE/deploy_key" ]; then
+            echo 'exists'
+            echo -n 'size(bytes): ' && wc -c < "$GITHUB_WORKSPACE/deploy_key" || true
+            echo -n 'perm: ' && stat -c '%a' "$GITHUB_WORKSPACE/deploy_key" || ls -l "$GITHUB_WORKSPACE/deploy_key"
+            echo -n 'sha256: ' && sha256sum "$GITHUB_WORKSPACE/deploy_key" || true
+          else
+            echo 'deploy_key missing'
+            exit 2
+          fi
+
+      - name: Deploy to server over SSH
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key_path: /github/workspace/deploy_key
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: |
+            set -e
+            cd /opt/miniAdWall || exit 1
+            git fetch --all
+            git reset --hard origin/main
+
+            # Ensure pnpm is available
+            if ! command -v pnpm >/dev/null 2>&1; then
+              npm install -g pnpm
+            fi
+
+            # Only deploy backend (you mentioned frontend is not on this server)
+            cd apps/api
+            pnpm install --frozen-lockfile || pnpm install
+
+            # Ensure uploads directory exists
+            mkdir -p uploads
+            chmod -R 755 uploads || true
+
+            # Restart or start the backend with PM2
+            if pm2 describe mini-adwall-api >/dev/null 2>&1; then
+              pm2 restart mini-adwall-api
+            else
+              pm2 start npm --name mini-adwall-api -- start
+            fi
+
+            # Persist process list for startup
+            pm2 save || true
