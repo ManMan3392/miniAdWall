@@ -11,16 +11,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // server: {
-  //   proxy: {
-  //     '/api': {
-  //       target: 'http://localhost:3002',
-  //       changeOrigin: true,
-  //     },
-  //     '/uploads': {
-  //       target: 'http://localhost:3002',
-  //       changeOrigin: true,
-  //     },
-  //   },
-  // },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://47.98.38.166:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: 'http://47.98.38.166:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 });

@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
   const DB_HOST = process.env.DB_HOST || '127.0.0.1';
   const DB_PORT = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306;
   const DB_USER = process.env.DB_USER || 'root';
-  const DB_PASS = process.env.DB_PASS || '';
+  const DB_PASS = process.env.DB_PASS || process.env.DB_PASSWORD || '';
   const DB_NAME = process.env.DB_NAME || 'adwall';
 
   const conn = await mysql.createConnection({
@@ -14,7 +14,12 @@ const { v4: uuidv4 } = require('uuid');
     port: DB_PORT,
     user: DB_USER,
     password: DB_PASS,
+    charset: 'utf8mb4',
+    connectTimeout: 10000,
   });
+
+  // Ensure connection uses utf8mb4 for sending/receiving text
+  await conn.query('SET NAMES utf8mb4;');
 
   console.log(`[seed] Using database: ${DB_NAME}`);
   await conn.query(`USE \`${DB_NAME}\`;`);

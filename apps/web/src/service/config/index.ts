@@ -1,4 +1,3 @@
-// Use same-origin in dev and rely on Vite proxy for /api
-export const BASE_URL = 'http://localhost:3000/';
+export const BASE_URL = '';
 
 export const TIME_OUT = 10000;
