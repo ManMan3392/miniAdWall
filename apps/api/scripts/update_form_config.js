@@ -1,17 +1,56 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config({
-  path: require('path').resolve(__dirname, '../.env'),
-});
+const path = require('path');
+const dotenv = require('dotenv');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'adwall',
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+// 显式解析并加载 .env，打印关键调试信息以便定位连接问题
+const envPath = path.resolve(__dirname, '../.env');
+console.log('[update_form_config] resolve .env ->', envPath);
+const envResult = dotenv.config({ path: envPath });
+if (envResult.error) {
+  console.log(
+    '[update_form_config] dotenv load error:',
+    envResult.error.message || envResult.error,
+  );
+} else {
+  const parsed = envResult.parsed || {};
+  console.log('[update_form_config] dotenv loaded (masked):', {
+    DB_HOST: parsed.DB_HOST || process.env.DB_HOST || '<not set>',
+    DB_PORT: parsed.DB_PORT || process.env.DB_PORT || '<not set>',
+    DB_USER: parsed.DB_USER || process.env.DB_USER || '<not set>',
+  });
+}
+
+const dns = require('dns').promises;
+
+async function createPoolWithResolvedHost() {
+  let host = process.env.DB_HOST || '127.0.0.1';
+  // 优先解析 IPv4 地址，若失败则使用原始 host
+  try {
+    const res = await dns.lookup(host, { family: 4 });
+    if (res && res.address) {
+      console.log('[update_form_config] dns.lookup IPv4 ->', res.address);
+      host = res.address;
+    }
+  } catch (err) {
+    console.log(
+      '[update_form_config] IPv4 lookup failed, will use hostname:',
+      host,
+      err && err.message,
+    );
+  }
+
+  return mysql.createPool({
+    host,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || '',
+    database: process.env.DB_NAME || 'adwall',
+    waitForConnections: true,
+    connectionLimit: 10,
+    // 设置连接超时（ms），避免长时间挂起
+    connectTimeout: 10000,
+  });
+}
 
 // 完善的表单配置，包含所有必需的基础字段
 const formConfigs = {
@@ -172,8 +211,9 @@ const formConfigs = {
 async function updateFormConfigs() {
   let connection;
   try {
+    const pool = await createPoolWithResolvedHost();
     connection = await pool.getConnection();
-    console.log('✅ 数据库连接成功');
+    console.log('✅ 数据库连接成功 (using pool)');
 
     for (const [typeCode, config] of Object.entries(formConfigs)) {
       // 获取 type_id
@@ -215,7 +255,27 @@ async function updateFormConfigs() {
 
     console.log('\n📋 当前表单配置:');
     configs.forEach((row) => {
-      const config = JSON.parse(row.config_value);
+      let config;
+      try {
+        config = JSON.parse(row.config_value);
+      } catch (err) {
+        console.error(
+          '[update_form_config] JSON.parse failed for',
+          row.type_code,
+          'error:',
+          err && err.message,
+        );
+        console.error(
+          '[update_form_config] config_value length:',
+          row.config_value ? row.config_value.length : 0,
+        );
+        console.error(
+          '[update_form_config] config_value preview:',
+          row.config_value ? row.config_value.slice(0, 800) : '<empty>',
+        );
+        return; // skip this row but continue others
+      }
+
       console.log(`\n${row.type_name} (${row.type_code}):`);
       console.log(`  字段数量: ${config.fields.length}`);
       console.log(
@@ -231,7 +291,11 @@ async function updateFormConfigs() {
     console.error('❌ 更新失败:', error);
   } finally {
     if (connection) connection.release();
-    await pool.end();
+    try {
+      if (typeof pool !== 'undefined' && pool) await pool.end();
+    } catch (e) {
+      console.log('[update_form_config] pool.end error', e && e.message);
+    }
   }
 }
 

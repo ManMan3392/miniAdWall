@@ -12,6 +12,7 @@ interface Iprops {
   onEdit?: (ad: any) => void;
   onCopy?: (ad: any) => void;
   onDelete?: (adId: string) => Promise<void>;
+  onInteractionChange?: (open: boolean) => void;
 }
 const AdDetailHead: FC<Iprops> = ({
   adTitle,
@@ -19,6 +20,7 @@ const AdDetailHead: FC<Iprops> = ({
   onEdit,
   onCopy,
   onDelete,
+  onInteractionChange,
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -37,6 +39,7 @@ const AdDetailHead: FC<Iprops> = ({
         break;
       case 'delete':
         setShowDeleteModal(true);
+        if (onInteractionChange) onInteractionChange(true);
         break;
       default:
         break;
@@ -83,10 +86,14 @@ const AdDetailHead: FC<Iprops> = ({
         okType="danger"
         cancelText="取消"
         confirmLoading={deleting}
-        onCancel={() => setShowDeleteModal(false)}
+        onCancel={() => {
+          setShowDeleteModal(false);
+          if (onInteractionChange) onInteractionChange(false);
+        }}
         onOk={async () => {
           if (!onDelete) {
             setShowDeleteModal(false);
+            if (onInteractionChange) onInteractionChange(false);
             return;
           }
           try {
@@ -97,6 +104,7 @@ const AdDetailHead: FC<Iprops> = ({
           } finally {
             setDeleting(false);
             setShowDeleteModal(false);
+            if (onInteractionChange) onInteractionChange(false);
           }
         }}
       >

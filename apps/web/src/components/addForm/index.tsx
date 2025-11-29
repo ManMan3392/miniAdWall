@@ -90,13 +90,31 @@ const AddForm: FC<AddFormProps> = ({
         type_code: editData.type_code || initialTypeCode,
       };
 
+      // 解析 ext_info（可能为字符串或对象），用于回填自定义字段（如 brand_slogan）
+      let extObj: any = {};
+      try {
+        if (editData.ext_info) {
+          extObj =
+            typeof editData.ext_info === 'string'
+              ? JSON.parse(editData.ext_info)
+              : editData.ext_info;
+        }
+      } catch {
+        extObj = {};
+      }
+
       if (formConfig?.fields) {
         formConfig.fields.forEach((field) => {
-          if (
-            field.type !== 'video-upload' &&
-            editData[field.name as keyof Ad] !== undefined
-          ) {
-            formValues[field.name] = editData[field.name as keyof Ad];
+          if (field.type === 'video-upload') return;
+
+          // 优先取 editData 顶层字段，其次尝试 ext_info
+          const topVal = (editData as any)[field.name];
+          if (typeof topVal !== 'undefined') {
+            formValues[field.name] = topVal;
+            return;
+          }
+          if (Object.prototype.hasOwnProperty.call(extObj, field.name)) {
+            formValues[field.name] = extObj[field.name];
           }
         });
       }

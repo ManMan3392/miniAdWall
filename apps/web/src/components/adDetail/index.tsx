@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import type { ReactNode, FC } from 'react';
+import type { ReactNode, FC, MouseEvent } from 'react';
 import style from './style.module.less';
 import type { Ad } from '@/store';
 import VideoModal from '../videoModal';
@@ -26,8 +26,14 @@ const AdDetail: FC<Iprops> = ({
   onHeatIncrement,
 }) => {
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [interactionOpen, setInteractionOpen] = useState(false);
 
-  const handleAdClick = () => {
+  const handleAdClick = (e?: MouseEvent) => {
+    if (interactionOpen) {
+      e?.stopPropagation();
+      return;
+    }
+
     const hasVideoUrls =
       Array.isArray(ad.video_urls) && ad.video_urls.length > 0;
     const hasVideoIdsString =
@@ -89,6 +95,7 @@ const AdDetail: FC<Iprops> = ({
           onEdit={onEdit}
           onCopy={onCopy}
           onDelete={onDelete}
+          onInteractionChange={(open: boolean) => setInteractionOpen(open)}
           ad={ad}
         />
         <div className={style['ad-content']}>
