@@ -8,16 +8,27 @@ const adsRouter = require('./routes/ads');
 
 const app = express();
 
-// 从环境变量读取允许的前端来源，默认使用你的 Vercel 部署地址
-const FRONTEND_ORIGIN =
+// 支持从环境变量读取允许的前端来源（可用逗号分隔多个），并包含常见的本地开发 origin
+const rawOrigins =
   process.env.FRONTEND_ORIGIN || 'https://mini-ad-wall-web.vercel.app';
+const extraLocal = 'http://localhost:5173';
+const ALLOWED_ORIGINS = Array.from(
+  new Set(
+    rawOrigins
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .concat([extraLocal]),
+  ),
+);
 
-// 严格的 CORS 配置：允许没有 Origin（如 server-to-server 请求）或匹配 FRONTEND_ORIGIN 的请求
+// 更灵活的 CORS 配置：允许没有 Origin（如 server-to-server 请求），
+// 或者当请求的 Origin 在允许列表中时放行。
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // allow server-to-server or curl
-      if (origin === FRONTEND_ORIGIN) return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -31,7 +42,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(
   '/uploads',
   (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+    // 对静态资源使用动态 Access-Control-Allow-Origin（允许多个来源）
+    const origin = req.headers.origin;
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || '*');
+    }
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
     res.header(

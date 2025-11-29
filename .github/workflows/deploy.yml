@@ -23,7 +23,26 @@ jobs:
             cd /opt/miniAdWall || exit 1
             git fetch --all
             git reset --hard origin/main
-            # Build and run with Docker Compose (requires docker & docker compose on server)
-            docker compose pull || true
-            docker compose up -d --build
-            docker image prune -f
+
+            # Ensure pnpm is available
+            if ! command -v pnpm >/dev/null 2>&1; then
+              npm install -g pnpm
+            fi
+
+            # Only deploy backend (you mentioned frontend is not on this server)
+            cd apps/api
+            pnpm install --frozen-lockfile || pnpm install
+
+            # Ensure uploads directory exists
+            mkdir -p uploads
+            chmod -R 755 uploads || true
+
+            # Restart or start the backend with PM2
+            if pm2 describe mini-adwall-api >/dev/null 2>&1; then
+              pm2 restart mini-adwall-api
+            else
+              pm2 start npm --name mini-adwall-api -- start
+            fi
+
+            # Persist process list for startup
+            pm2 save || true
