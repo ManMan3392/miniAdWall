@@ -44,36 +44,21 @@ jobs:
             cd /opt/miniAdWall || exit 1
             git fetch --all
             git reset --hard origin/main
-
             # Ensure pnpm is available
             if ! command -v pnpm >/dev/null 2>&1; then
               npm install -g pnpm
             fi
-
-            # Only deploy backend (you mentioned frontend is not on this server)
+            # Only deploy backend (frontend is not on this server)
             cd apps/api
             pnpm install --frozen-lockfile || pnpm install
-
             # Ensure uploads directory exists
             mkdir -p uploads
             chmod -R 755 uploads || true
-
             # Restart or start the backend with PM2
             if pm2 describe mini-adwall-api >/dev/null 2>&1; then
               pm2 restart mini-adwall-api
             else
               pm2 start npm --name mini-adwall-api -- start
             fi
-
             # Persist process list for startup
             pm2 save || true
-name: Deploy to VPS via SSH
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
