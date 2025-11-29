@@ -49,3 +49,13 @@ body {
 div {
   box-sizing: border-box;
 }
+
+:root {
+  --ui-scale: 0.8;
+}
+
+#root {
+  transform: scale(var(--ui-scale));
+  transform-origin: 0 0;
+  width: calc(100% / var(--ui-scale));
+}
