@@ -251,12 +251,8 @@ router.get('/', async (req, res) => {
             `SELECT id, file_path FROM video WHERE id IN (${ids.map(() => '?').join(',')})`,
             ids,
           );
-          // Convert stored file_path (可能为相对路径) 为完整可访问的 URL
-          row.video_urls = videos.map((v) => {
-            const p = v.file_path || '';
-            if (/^https?:\/\//i.test(p)) return p;
-            return `${req.protocol}://${req.get('host')}${p.startsWith('/') ? p : '/' + p}`;
-          });
+          // 返回存储的 file_path（相对路径），让前端或代理处理成完整 URL
+          row.video_urls = videos.map((v) => v.file_path || '');
         }
       }
     }

@@ -99,7 +99,7 @@ router.post('/upload', upload.single('video'), async (req, res) => {
         .on('error', reject);
     });
 
-    previewUrl = `${req.protocol}://${req.get('host')}/uploads/previews/${previewFilename}`;
+    previewUrl = `/uploads/previews/${previewFilename}`;
   } catch (err) {
     console.warn('FFmpeg 不可用或视频处理失败，将使用默认值:', err.message);
     // 继续处理，使用默认值
@@ -153,7 +153,7 @@ router.post('/upload', upload.single('video'), async (req, res) => {
     code: 200,
     data: {
       videoId: vid,
-      url: `${req.protocol}://${req.get('host')}/uploads/videos/${path.basename(filepath)}`,
+      url: `/uploads/videos/${path.basename(filepath)}`,
       duration,
       resolution,
       previewUrl,
