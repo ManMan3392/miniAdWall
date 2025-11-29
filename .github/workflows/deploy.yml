@@ -13,16 +13,16 @@ jobs:
 
       - name: Prepare deploy key
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          # Write deploy key into the workflow workspace so container actions can read it
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > "$GITHUB_WORKSPACE/deploy_key"
+          chmod 600 "$GITHUB_WORKSPACE/deploy_key"
 
       - name: Deploy to server over SSH
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          key_path: ~/.ssh/deploy_key
+          key_path: /github/workspace/deploy_key
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             set -e
