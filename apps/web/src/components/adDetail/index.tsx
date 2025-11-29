@@ -82,7 +82,7 @@ const AdDetail: FC<Iprops> = ({
       if (!randomPath) return '';
       return randomPath.includes('http')
         ? randomPath
-        : `http://localhost:3000${randomPath.startsWith('/') ? '' : '/'}${randomPath}`;
+        : `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}${randomPath.startsWith('/') ? '' : '/'}${randomPath}`;
     }
     return '';
   };

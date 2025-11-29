@@ -4,6 +4,11 @@ import path from 'path';
 
 import eslint from 'vite-plugin-eslint';
 
+const backendTarget =
+  process.env.VITE_API_BASE ||
+  process.env.BACKEND_URL ||
+  'http://47.98.38.166:3000';
+
 export default defineConfig({
   plugins: [react(), eslint()],
   resolve: {
@@ -14,12 +19,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://47.98.38.166:3000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://47.98.38.166:3000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },

@@ -48,6 +48,9 @@ const AddForm: FC<AddFormProps> = ({
   const [loadingCfg, setLoadingCfg] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [imageFileLists, setImageFileLists] = useState<
+    Record<string, UploadFile[]>
+  >({});
   const [videoIds, setVideoIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -125,12 +128,73 @@ const AddForm: FC<AddFormProps> = ({
 
       if (editData.video_urls && editData.video_urls.length > 0) {
         const videoFiles: UploadFile[] = editData.video_urls.map(
-          (url, index) => ({
-            uid: `-${index}`,
-            name: `video_${index}.mp4`,
-            status: 'done',
-            url: `http://localhost:3000${url}`,
-          }),
+          (url, index) => {
+            let finalUrl = '';
+            try {
+              if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+                finalUrl = url;
+              } else if (typeof window !== 'undefined' && url) {
+                finalUrl = `${window.location.origin}${url.startsWith('/') ? url : '/' + url}`;
+              } else {
+                // 回填 image-upload 类型字段（例如 brand_logo）
+                if (formConfig?.fields) {
+                  formConfig.fields.forEach((field) => {
+                    if (field.type === 'image-upload') {
+                      // 优先使用 editData 顶层字段，其次尝试 ext_info
+                      const topVal = (editData as any)[field.name];
+                      const extVal = Object.prototype.hasOwnProperty.call(
+                        extObj,
+                        field.name,
+                      )
+                        ? extObj[field.name]
+                        : undefined;
+                      const src =
+                        typeof topVal !== 'undefined' && topVal
+                          ? topVal
+                          : extVal;
+                      if (src) {
+                        let finalUrl = '';
+                        try {
+                          if (
+                            typeof src === 'string' &&
+                            /^https?:\/\//i.test(src)
+                          ) {
+                            finalUrl = src;
+                          } else if (typeof window !== 'undefined' && src) {
+                            finalUrl = `${window.location.origin}${String(src).startsWith('/') ? String(src) : '/' + String(src)}`;
+                          } else {
+                            finalUrl = String(src || '');
+                          }
+                        } catch {
+                          finalUrl = String(src || '');
+                        }
+                        const fileObj: UploadFile = {
+                          uid: `img-${field.name}`,
+                          name: `image_${field.name}`,
+                          status: 'done',
+                          url: finalUrl,
+                        };
+                        setImageFileLists((prev) => ({
+                          ...prev,
+                          [field.name]: [fileObj],
+                        }));
+                      }
+                    }
+                  });
+                }
+                finalUrl = String(url || '');
+              }
+            } catch {
+              finalUrl = String(url || '');
+            }
+
+            return {
+              uid: `-${index}`,
+              name: `video_${index}.mp4`,
+              status: 'done',
+              url: finalUrl,
+            } as UploadFile;
+          },
         );
         setFileList(videoFiles);
 
@@ -197,17 +261,43 @@ const AddForm: FC<AddFormProps> = ({
       video_ids: videoIds,
     };
 
-    // 遍历 formConfig.fields，将表单值映射到 payload
+    // 将动态字段分流：基础列放顶层，其余放入 ext_info（后端 ad.ext_info 字段）
+    const extInfo: Record<string, any> = {};
+    const topFields = new Set([
+      'publisher',
+      'title',
+      'content',
+      'price',
+      'landing_url',
+    ]);
+
     dynamicFields.forEach((field) => {
-      if (field.type === 'video-upload') {
-        // video-upload 已通过 videoIds 处理
-        return;
+      if (field.type === 'video-upload') return; // 视频单独处理
+
+      let value = values[field.name];
+
+      // 对于 image-upload，如果表单没有新值，尝试从回填的 imageFileLists 中取 URL
+      if (
+        (field.type === 'image-upload' || field.type === 'file-upload') &&
+        (!value || value === '')
+      ) {
+        const imgs = imageFileLists[field.name];
+        if (imgs && imgs.length > 0) {
+          const first = imgs[0];
+          if (first && first.url) value = first.url as string;
+        }
       }
-      const value = values[field.name];
-      if (value !== undefined && value !== null && value !== '') {
-        payload[field.name] = field.type === 'number' ? Number(value) : value;
+
+      if (typeof value !== 'undefined' && value !== null && value !== '') {
+        if (topFields.has(field.name)) {
+          payload[field.name] = field.type === 'number' ? Number(value) : value;
+        } else {
+          extInfo[field.name] = value;
+        }
       }
     });
+
+    if (Object.keys(extInfo).length > 0) payload.ext_info = extInfo;
 
     console.log('表单提交 - 最终payload:', payload);
 
@@ -273,65 +363,118 @@ const AddForm: FC<AddFormProps> = ({
           <>
             {dynamicFields
               .filter((f) => f.type !== 'video-upload')
-              .map((f) => (
-                <Form.Item
-                  key={f.name}
-                  label={
-                    <>
-                      {f.label || f.name}
-                      {f.required && (
-                        <span style={{ color: '#ff4d4f', marginLeft: 4 }}>
-                          *
-                        </span>
-                      )}
-                    </>
-                  }
-                  name={f.name}
-                  rules={
-                    f.required
-                      ? [
-                          {
-                            required: true,
-                            message: `${f.label || f.name}为必填项`,
-                          },
-                        ]
-                      : []
-                  }
-                >
-                  {Array.isArray((f as any).enums) &&
-                  (f as any).enums.length ? (
-                    <Select
-                      placeholder={
-                        f.placeholder || `请选择${f.label || f.name}`
+              .map((f) => {
+                // Render image-upload as Upload component to show previews (e.g., brand_logo)
+                if (f.type === 'image-upload') {
+                  return (
+                    <Form.Item
+                      key={f.name}
+                      label={
+                        <>
+                          {f.label || f.name}
+                          {f.required && (
+                            <span style={{ color: '#ff4d4f', marginLeft: 4 }}>
+                              *
+                            </span>
+                          )}
+                        </>
                       }
-                      options={(f as any).enums.map((v: any) => ({
-                        label: String(v),
-                        value: v,
-                      }))}
-                    />
-                  ) : f.type === 'number' ? (
-                    <InputNumber
-                      style={{ width: '100%' }}
-                      placeholder={
-                        f.placeholder || `请输入${f.label || f.name}`
+                      name={f.name}
+                      rules={
+                        f.required
+                          ? [
+                              {
+                                required: true,
+                                message: `${f.label || f.name}为必填项`,
+                              },
+                            ]
+                          : []
                       }
-                    />
-                  ) : f.name === 'content' ? (
-                    <TextArea
-                      rows={4}
-                      placeholder={
-                        f.placeholder || `请输入${f.label || f.name}`
-                      }
-                    />
-                  ) : (
-                    <Input
-                      placeholder={
-                        f.placeholder || `请输入${f.label || f.name}`
-                      }
-                    />
-                  )}
-                </Form.Item>
-              ))}
+                    >
+                      <Upload
+                        listType="picture-card"
+                        fileList={imageFileLists[f.name] || []}
+                        onChange={({ fileList }) =>
+                          setImageFileLists((prev) => ({
+                            ...prev,
+                            [f.name]: fileList,
+                          }))
+                        }
+                        accept="image/*"
+                        multiple={false}
+                        // 使用 field.uploadUrl 如果存在，否则不设置 action（可能需后续完善）
+                        action={(f as any).uploadUrl || undefined}
+                        name="file"
+                      >
+                        <div>
+                          <PlusOutlined />
+                          <div style={{ marginTop: 8 }}>上传</div>
+                        </div>
+                      </Upload>
+                    </Form.Item>
+                  );
+                }
+
+                return (
+                  <Form.Item
+                    key={f.name}
+                    label={
+                      <>
+                        {f.label || f.name}
+                        {f.required && (
+                          <span style={{ color: '#ff4d4f', marginLeft: 4 }}>
+                            *
+                          </span>
+                        )}
+                      </>
+                    }
+                    name={f.name}
+                    rules={
+                      f.required
+                        ? [
+                            {
+                              required: true,
+                              message: `${f.label || f.name}为必填项`,
+                            },
+                          ]
+                        : []
+                    }
+                  >
+                    {Array.isArray((f as any).enums) &&
+                    (f as any).enums.length ? (
+                      <Select
+                        placeholder={
+                          f.placeholder || `请选择${f.label || f.name}`
+                        }
+                        options={(f as any).enums.map((v: any) => ({
+                          label: String(v),
+                          value: v,
+                        }))}
+                      />
+                    ) : f.type === 'number' ? (
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        placeholder={
+                          f.placeholder || `请输入${f.label || f.name}`
+                        }
+                      />
+                    ) : f.name === 'content' ? (
+                      <TextArea
+                        rows={4}
+                        placeholder={
+                          f.placeholder || `请输入${f.label || f.name}`
+                        }
+                      />
+                    ) : (
+                      <Input
+                        placeholder={
+                          f.placeholder || `请输入${f.label || f.name}`
+                        }
+                      />
+                    )}
+                  </Form.Item>
+                );
+              })}
 
             {dynamicFields.some((f) => f.type === 'video-upload') && (
               <Form.Item
