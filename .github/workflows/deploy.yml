@@ -11,33 +11,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare deploy key
-        run: |
-          # Write deploy key into the workflow workspace so container actions can read it
-          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > "$GITHUB_WORKSPACE/deploy_key"
-          chmod 600 "$GITHUB_WORKSPACE/deploy_key"
-
-      - name: Debug: verify deploy key file
-        run: |
-          echo '=== Workspace listing ==='
-          ls -la "$GITHUB_WORKSPACE" || true
-          echo '=== deploy_key info ==='
-          if [ -f "$GITHUB_WORKSPACE/deploy_key" ]; then
-            echo 'exists'
-            echo -n 'size(bytes): ' && wc -c < "$GITHUB_WORKSPACE/deploy_key" || true
-            echo -n 'perm: ' && stat -c '%a' "$GITHUB_WORKSPACE/deploy_key" || ls -l "$GITHUB_WORKSPACE/deploy_key"
-            echo -n 'sha256: ' && sha256sum "$GITHUB_WORKSPACE/deploy_key" || true
-          else
-            echo 'deploy_key missing'
-            exit 2
-          fi
-
       - name: Deploy to server over SSH
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          key_path: /github/workspace/deploy_key
+          key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             set -e
