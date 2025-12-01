@@ -66,6 +66,7 @@ const formConfigs = {
         label: '广告标题',
         required: true,
         placeholder: '请输入吸引用户的短视频标题（不超过30字）',
+        validation: { max: 30 },
       },
       {
         name: 'content',
@@ -73,6 +74,7 @@ const formConfigs = {
         label: '广告内容',
         required: true,
         placeholder: '请输入广告详细内容',
+        validation: { max: 500 },
       },
       {
         name: 'landing_url',
@@ -80,6 +82,7 @@ const formConfigs = {
         label: '落地页URL',
         required: true,
         placeholder: '请输入落地页链接，如 https://example.com',
+        validation: { type: 'url' },
       },
       {
         name: 'price',
@@ -112,6 +115,7 @@ const formConfigs = {
         label: '广告标题',
         required: true,
         placeholder: '请输入品牌广告标题（不超过20字）',
+        validation: { max: 20 },
       },
       {
         name: 'content',
@@ -119,6 +123,7 @@ const formConfigs = {
         label: '广告内容',
         required: true,
         placeholder: '请输入品牌广告详细内容',
+        validation: { max: 500 },
       },
       {
         name: 'landing_url',
@@ -126,6 +131,7 @@ const formConfigs = {
         label: '落地页URL',
         required: true,
         placeholder: '请输入品牌官网链接',
+        validation: { type: 'url' },
       },
       {
         name: 'price',
@@ -165,6 +171,7 @@ const formConfigs = {
         label: '广告标题',
         required: true,
         placeholder: '请输入广告标题（不超过25字）',
+        validation: { max: 25 },
       },
       {
         name: 'content',
@@ -172,6 +179,7 @@ const formConfigs = {
         label: '广告内容',
         required: true,
         placeholder: '请输入广告详细内容',
+        validation: { max: 500 },
       },
       {
         name: 'landing_url',
@@ -179,6 +187,7 @@ const formConfigs = {
         label: '落地页URL',
         required: true,
         placeholder: '请输入转化落地页链接',
+        validation: { type: 'url' },
       },
       {
         name: 'price',

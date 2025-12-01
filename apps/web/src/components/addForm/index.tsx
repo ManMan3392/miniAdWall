@@ -212,7 +212,6 @@ const AddForm: FC<AddFormProps> = ({
   const handleUpload = async (options: any) => {
     const { file, onSuccess, onError } = options;
     try {
-      // 前端校验：与后端保持一致的大小与格式限制，避免不必要的网络传输
       const getVideoRules = (code?: string) => {
         return {
           short_video: { maxSize: 100 * 1024 * 1024, allowed: ['.mp4'] },
@@ -277,6 +276,57 @@ const AddForm: FC<AddFormProps> = ({
 
   const dynamicFields = useMemo(() => formConfig?.fields || [], [formConfig]);
 
+  const buildRules = (field: any) => {
+    const rulesArr: any[] = [];
+    if (field.required) {
+      rulesArr.push({
+        required: true,
+        message: `${field.label || field.name}为必填项`,
+      });
+    }
+    const v = field.validation || {};
+    if (v.max) {
+      rulesArr.push({
+        max: v.max,
+        message: `${field.label || field.name}最多 ${v.max} 个字`,
+      });
+    }
+    if (v.min) {
+      rulesArr.push({
+        min: v.min,
+        message: `${field.label || field.name}至少 ${v.min} 个字`,
+      });
+    }
+    if (v.type === 'url' || v.pattern === 'url') {
+      rulesArr.push({
+        validator: (_: any, value: any) => {
+          if (!value) return Promise.resolve();
+          try {
+            const u = new URL(String(value));
+            if (u.protocol === 'http:' || u.protocol === 'https:')
+              return Promise.resolve();
+            return Promise.reject(
+              new Error('落地页 URL 必须以 http:// 或 https:// 开头'),
+            );
+          } catch {
+            return Promise.reject(new Error('请输入合法的 URL'));
+          }
+        },
+      });
+    } else if (v.pattern) {
+      try {
+        const re = new RegExp(v.pattern);
+        rulesArr.push({
+          pattern: re,
+          message: v.message || `${field.label || field.name}格式不正确`,
+        });
+      } catch {
+        // ignore bad pattern
+      }
+    }
+    return rulesArr;
+  };
+
   const onFinish = async (values: any) => {
     if (!editMode) {
       const videoField = dynamicFields.find((f) => f.type === 'video-upload');
@@ -286,13 +336,11 @@ const AddForm: FC<AddFormProps> = ({
       }
     }
 
-    // 完全基于后端 formConfig 动态构建 payload
     const payload: any = {
       type_id: typeId!,
       video_ids: videoIds,
     };
 
-    // 将动态字段分流：基础列放顶层，其余放入 ext_info（后端 ad.ext_info 字段）
     const extInfo: Record<string, any> = {};
     const topFields = new Set([
       'publisher',
@@ -303,11 +351,10 @@ const AddForm: FC<AddFormProps> = ({
     ]);
 
     dynamicFields.forEach((field) => {
-      if (field.type === 'video-upload') return; // 视频单独处理
+      if (field.type === 'video-upload') return;
 
       let value = values[field.name];
 
-      // 对于 image-upload，如果表单没有新值，尝试从回填的 imageFileLists 中取 URL
       if (
         (field.type === 'image-upload' || field.type === 'file-upload') &&
         (!value || value === '')
@@ -336,10 +383,8 @@ const AddForm: FC<AddFormProps> = ({
     try {
       let resp;
       if (editMode && editData) {
-        // 编辑模式
         resp = await updateAd(editData.id, payload);
       } else {
-        // 创建或复制模式
         resp = await createAd(payload);
       }
 
@@ -349,7 +394,7 @@ const AddForm: FC<AddFormProps> = ({
         form.resetFields();
         setVideoIds([]);
         setFileList([]);
-        onCreated(); // 通知父组件操作成功，触发列表刷新和模态框关闭
+        onCreated();
       } else {
         message.error(resp.message || (editMode ? '更新失败' : '创建失败'));
       }
@@ -395,7 +440,6 @@ const AddForm: FC<AddFormProps> = ({
             {dynamicFields
               .filter((f) => f.type !== 'video-upload')
               .map((f) => {
-                // Render image-upload as Upload component to show previews (e.g., brand_logo)
                 if (f.type === 'image-upload') {
                   return (
                     <Form.Item
@@ -411,16 +455,7 @@ const AddForm: FC<AddFormProps> = ({
                         </>
                       }
                       name={f.name}
-                      rules={
-                        f.required
-                          ? [
-                              {
-                                required: true,
-                                message: `${f.label || f.name}为必填项`,
-                              },
-                            ]
-                          : []
-                      }
+                      rules={buildRules(f)}
                     >
                       <Upload
                         listType="picture-card"
@@ -460,16 +495,7 @@ const AddForm: FC<AddFormProps> = ({
                       </>
                     }
                     name={f.name}
-                    rules={
-                      f.required
-                        ? [
-                            {
-                              required: true,
-                              message: `${f.label || f.name}为必填项`,
-                            },
-                          ]
-                        : []
-                    }
+                    rules={buildRules(f)}
                   >
                     {Array.isArray((f as any).enums) &&
                     (f as any).enums.length ? (
@@ -488,6 +514,16 @@ const AddForm: FC<AddFormProps> = ({
                         placeholder={
                           f.placeholder || `请输入${f.label || f.name}`
                         }
+                        min={
+                          typeof (f as any).validation?.min === 'number'
+                            ? (f as any).validation.min
+                            : undefined
+                        }
+                        max={
+                          typeof (f as any).validation?.max === 'number'
+                            ? (f as any).validation.max
+                            : undefined
+                        }
                       />
                     ) : f.name === 'content' ? (
                       <TextArea
@@ -495,11 +531,24 @@ const AddForm: FC<AddFormProps> = ({
                         placeholder={
                           f.placeholder || `请输入${f.label || f.name}`
                         }
+                        maxLength={(f as any).validation?.max}
+                        showCount={!!(f as any).validation?.max}
                       />
                     ) : (
                       <Input
                         placeholder={
                           f.placeholder || `请输入${f.label || f.name}`
+                        }
+                        maxLength={(f as any).validation?.max}
+                        type={
+                          (f as any).validation?.type === 'url'
+                            ? 'url'
+                            : undefined
+                        }
+                        pattern={
+                          typeof (f as any).validation?.pattern === 'string'
+                            ? (f as any).validation.pattern
+                            : undefined
                         }
                       />
                     )}
