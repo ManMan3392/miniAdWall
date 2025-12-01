@@ -212,6 +212,37 @@ const AddForm: FC<AddFormProps> = ({
   const handleUpload = async (options: any) => {
     const { file, onSuccess, onError } = options;
     try {
+      // 前端校验：与后端保持一致的大小与格式限制，避免不必要的网络传输
+      const getVideoRules = (code?: string) => {
+        return {
+          short_video: { maxSize: 100 * 1024 * 1024, allowed: ['.mp4'] },
+          brand: { maxSize: 200 * 1024 * 1024, allowed: ['.mp4', '.avi'] },
+          effect: { maxSize: 150 * 1024 * 1024, allowed: ['.mp4'] },
+        }[code || ''];
+      };
+
+      const rules = getVideoRules(typeCode);
+      if (rules) {
+        if (file.size > rules.maxSize) {
+          const mb = Math.round(rules.maxSize / (1024 * 1024));
+          const errMsg = `文件过大，最大允许 ${mb} MB`;
+          message.error(errMsg);
+          onError?.(new Error(errMsg));
+          return;
+        }
+        const ext =
+          (file.name &&
+            file.name.includes('.') &&
+            file.name.slice(file.name.lastIndexOf('.')).toLowerCase()) ||
+          '';
+        if (!rules.allowed.includes(ext)) {
+          const errMsg = `不支持的文件格式 ${ext}`;
+          message.error(errMsg);
+          onError?.(new Error(errMsg));
+          return;
+        }
+      }
+
       const fd = new FormData();
       fd.append('video', file);
       fd.append('type_id', String(typeId));

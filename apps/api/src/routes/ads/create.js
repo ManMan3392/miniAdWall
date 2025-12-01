@@ -134,7 +134,10 @@ module.exports = (router) => {
             }
           }
 
-          if (fields.some((f) => f.type === 'video-upload')) {
+          const requiresVideo = fields.some(
+            (f) => f.type === 'video-upload' && f.required,
+          );
+          if (requiresVideo) {
             const vids = Array.isArray(video_ids)
               ? video_ids
               : typeof video_ids === 'string' && video_ids.trim()
