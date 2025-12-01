@@ -11,19 +11,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Upload files to server (scp)
-        uses: appleboy/scp-action@v0.1.5
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          source: './'
-          target: '/opt/mini-adwall/miniAdWall'
-          strip_components: 0
-          rm: true
-
-      - name: Run remote install & restart
+      - name: Deploy to server over SSH
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -32,12 +20,15 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             set -e
+            cd /opt/mini-adwall/miniAdWall || exit 1
+            git fetch --all
+            git reset --hard origin/main
             # Ensure pnpm is available
             if ! command -v pnpm >/dev/null 2>&1; then
               npm install -g pnpm
             fi
             # Only deploy backend (frontend is not on this server)
-            cd /opt/mini-adwall/miniAdWall/apps/api || exit 1
+            cd apps/api
             pnpm install --frozen-lockfile || pnpm install
             # Ensure uploads directory exists
             mkdir -p uploads
