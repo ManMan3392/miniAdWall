@@ -42,7 +42,45 @@ module.exports = (router) => {
 
     try {
       await db.query(`UPDATE ad SET ${setSQL} WHERE id = ?`, vals);
-      res.json({ code: 200, data: { adId, message: '更新成功' } });
+
+      const [[rows]] = await db.query(
+        `SELECT a.*, t.type_code, t.sort_rule
+         FROM ad a
+         LEFT JOIN ad_type t ON a.type_id = t.id
+         WHERE a.id = ?`,
+        [adId],
+      );
+
+      if (!rows) {
+        return res.status(404).json({ code: 404, message: '广告不存在' });
+      }
+
+      const ad = rows;
+
+      try {
+        ad.ext_info = ad.ext_info ? JSON.parse(ad.ext_info) : {};
+      } catch (e) {
+        ad.ext_info = ad.ext_info || {};
+      }
+
+      ad.video_urls = [];
+      if (ad.video_ids) {
+        const ids = ad.video_ids
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (ids.length) {
+          const [videos] = await db.query(
+            `SELECT id, file_path FROM video WHERE id IN (${ids
+              .map(() => '?')
+              .join(',')})`,
+            ids,
+          );
+          ad.video_urls = videos.map((v) => v.file_path || '');
+        }
+      }
+
+      res.json({ code: 200, data: ad });
     } catch (err) {
       console.error(err);
       res.status(500).json({ code: 500, message: '更新失败' });

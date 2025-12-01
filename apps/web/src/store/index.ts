@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { getAdList, getAdTypes, updateAd, deleteAd } from '../service/ad';
+import { mergeAdLists } from '@/utils/mergeAdList';
+import { markDirty } from '@/utils/updatePrice';
 
 interface AdType {
   id: number;
@@ -25,10 +27,11 @@ export interface Ad {
   sort_rule?: any;
 }
 
-interface AdStore {
+export interface AdStore {
   adList: Ad[];
   currentPage: number;
   pageSize: number;
+  total: number;
   loading: boolean;
   adTypes: AdType[];
   selectedAd: Ad | null;
@@ -46,165 +49,37 @@ interface AdStore {
   setLocalPrice: (adId: string, price: number) => void;
 }
 
-function computeScore(ad: Ad): number {
-  return ad.price + ad.price * ad.heat * 0.42;
-}
-
-function resortList(list: Ad[]): Ad[] {
-  return [...list].sort((a, b) => {
-    const scoreA = computeScore(a);
-    const scoreB = computeScore(b);
-    if (scoreB !== scoreA) return scoreB - scoreA;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-}
-
-const dirtyIds: Set<string> = new Set();
-let pendingResort = false;
-
-// requestIdleCallback 兼容处理
-const scheduleIdle = (cb: () => void) => {
-  if (typeof (window as any).requestIdleCallback === 'function') {
-    (window as any).requestIdleCallback(cb, { timeout: 120 });
-  } else {
-    setTimeout(cb, 0);
-  }
-};
-
-function batchMergeInsert(base: Ad[], updatedItems: Ad[]): Ad[] {
-  const sortedUpdated = [...updatedItems].sort((a, b) => {
-    const sa = computeScore(a);
-    const sb = computeScore(b);
-    if (sb !== sa) return sb - sa;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-  let i = 0;
-  let j = 0;
-  const result: Ad[] = [];
-  while (i < base.length && j < sortedUpdated.length) {
-    const a = base[i];
-    const b = sortedUpdated[j];
-    const sa = computeScore(a);
-    const sb = computeScore(b);
-    if (sb > sa) {
-      result.push(b);
-      j++;
-    } else if (sb < sa) {
-      result.push(a);
-      i++;
-    } else {
-      const ta = new Date(a.created_at).getTime();
-      const tb = new Date(b.created_at).getTime();
-      if (tb >= ta) {
-        result.push(b);
-        j++;
-      } else {
-        result.push(a);
-        i++;
-      }
-    }
-  }
-  while (i < base.length) result.push(base[i++]);
-  while (j < sortedUpdated.length) result.push(sortedUpdated[j++]);
-  return result;
-}
-
-function runDeferredResort(get: () => AdStore, set: any) {
-  const state = get();
-  if (dirtyIds.size === 0) {
-    pendingResort = false;
-    return;
-  }
-  const allDirtyIds = Array.from(dirtyIds);
-  dirtyIds.clear();
-  pendingResort = false;
-  const original = state.adList;
-  if (original.length === 0) return;
-
-  const dirtyItems: Ad[] = [];
-  const base: Ad[] = [];
-  for (const ad of original) {
-    if (allDirtyIds.includes(ad.id)) dirtyItems.push(ad);
-    else base.push(ad);
-  }
-
-  const DIRTY_FULL_THRESHOLD = 0.15;
-  if (dirtyItems.length === 0) return;
-  if (
-    dirtyItems.length > original.length * DIRTY_FULL_THRESHOLD ||
-    original.length < 200
-  ) {
-    set({ adList: resortList([...base, ...dirtyItems]) });
-    return;
-  }
-
-  const merged = batchMergeInsert(base, dirtyItems);
-  set({ adList: merged });
-}
-
-function markDirty(adId: string, get: () => AdStore, set: any) {
-  dirtyIds.add(adId);
-  if (!pendingResort) {
-    pendingResort = true;
-    scheduleIdle(() => runDeferredResort(get, set));
-  }
-}
-
-function mergeAdLists(current: Ad[], incoming: Ad[]): Ad[] {
-  const byId = new Map<string, Ad>();
-  for (const c of current) byId.set(c.id, c);
-  const result: Ad[] = [];
-  for (const next of incoming) {
-    const prev = byId.get(next.id);
-    if (!prev) {
-      result.push(next);
-      continue;
-    }
-    if (
-      prev.price !== next.price ||
-      prev.heat !== next.heat ||
-      prev.title !== next.title ||
-      prev.content !== next.content ||
-      prev.landing_url !== next.landing_url ||
-      prev.video_ids !== next.video_ids ||
-      prev.publisher !== next.publisher
-    ) {
-      result.push(next);
-    } else {
-      result.push(prev);
-    }
-  }
-  return result;
-}
-
 export const useAdStore = create<AdStore>((set, get) => ({
   adList: [],
   currentPage: 1,
-  pageSize: 10,
+  pageSize: 9,
+  total: 0,
   loading: false,
   adTypes: [],
   selectedAd: null,
   fetchAdList: async (
-    page?: number,
-    size?: number,
+    page = get().currentPage,
+    size = get().pageSize,
     options?: { silent?: boolean },
   ) => {
-    const currentPage = page ?? get().currentPage;
-    const pageSize = size ?? get().pageSize;
+    const currentPage = page;
+    const pageSize = size;
     const silent = options?.silent;
     if (!silent) set({ loading: true });
     try {
       const response = await getAdList(currentPage, pageSize);
       if (response.code === 200) {
         const incoming = response.data.list || [];
+        const total = response.data.total || get().total || 0;
         if (silent) {
           const merged = mergeAdLists(get().adList, incoming);
-          set({ adList: merged });
+          set({ adList: merged, total });
         } else {
           set({
             adList: incoming,
             currentPage: response.data.page || currentPage,
             pageSize: response.data.size || pageSize,
+            total,
           });
         }
       }
@@ -238,36 +113,25 @@ export const useAdStore = create<AdStore>((set, get) => ({
     }
     try {
       const response = await updateAd(adId, { price });
-      console.log('[useAdStore] updateAd response', response);
       if (response.code !== 200) {
         throw new Error('出价更新失败 code=' + response.code);
       }
-      const maxAttempts = 4;
-      let matched = false;
-      for (let i = 0; i < maxAttempts; i++) {
-        try {
-          await get().fetchAdList(undefined, undefined, { silent: true });
-        } catch (err) {
-          console.warn('fetchAdList retry failed', err);
-        }
-        const latest = get().adList.find((a) => a.id === adId);
-        console.log('[useAdStore] fetch attempt', i + 1, {
-          latestPrice: latest?.price,
+      const updatedAd = response.data;
+      if (updatedAd && updatedAd.id) {
+        set({
+          adList: get().adList.map((a) =>
+            a.id === String(updatedAd.id) ? { ...a, ...updatedAd } : a,
+          ),
         });
-        if (latest && Number(latest.price) === Number(price)) {
-          matched = true;
-          break;
-        }
-        // 等待一段时间再重试，给后端一些延迟处理时间
-        // 第一次 300ms，第二次 600ms，依次倍增
-        await new Promise((res) => setTimeout(res, 300 * (i + 1)));
-      }
-      if (!matched) {
-        // 若重试后仍未匹配，做一次完整刷新（非 silent）以替换本地列表
+      } else {
         try {
-          await get().fetchAdList(undefined, undefined, { silent: false });
+          setTimeout(() => {
+            get()
+              .fetchAdList(undefined, undefined, { silent: true })
+              .catch(() => {});
+          }, 2000);
         } catch (err) {
-          console.warn('full fetchAdList failed', err);
+          console.warn('fetchAdList after update failed', err);
         }
       }
       return response;
@@ -294,6 +158,14 @@ export const useAdStore = create<AdStore>((set, get) => ({
       const response = await updateAd(adId, data);
       if (response.code !== 200) {
         throw new Error('广告更新失败 code=' + response.code);
+      }
+      const updatedAd = response.data;
+      if (updatedAd && updatedAd.id) {
+        set({
+          adList: get().adList.map((a) =>
+            a.id === String(updatedAd.id) ? { ...a, ...updatedAd } : a,
+          ),
+        });
       }
       if (affectsSort) {
         setTimeout(() => {

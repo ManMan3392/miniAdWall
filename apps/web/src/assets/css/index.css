@@ -42,8 +42,15 @@ button {
   outline: none;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   background-color: rgb(245 245 245);
+  min-height: 100vh;
 }
 
 div {
@@ -58,4 +65,5 @@ div {
   transform: scale(var(--ui-scale));
   transform-origin: 0 0;
   width: calc(100% / var(--ui-scale));
+  min-height: calc(100vh / var(--ui-scale));
 }

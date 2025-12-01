@@ -1,6 +1,5 @@
 import myRequest from '../index';
-export type { FormConfig, FormField, CreateAdInput } from './validator';
-export { validateCreateAdPayload, assertCreateAdValid } from './validator';
+export type { FormConfig, FormField, CreateAdInput } from './validatorType';
 
 export function getAdList(page = 1, size = 5) {
   return myRequest.request({
