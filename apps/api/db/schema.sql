@@ -1,8 +1,6 @@
--- Minimal MySQL schema for mini 广告墙 (run on your MySQL server)
 CREATE DATABASE IF NOT EXISTS adwall CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE adwall;
 
--- ad_type table
 CREATE TABLE IF NOT EXISTS ad_type (
   id INT AUTO_INCREMENT PRIMARY KEY,
   type_code VARCHAR(30) NOT NULL UNIQUE,
@@ -11,7 +9,6 @@ CREATE TABLE IF NOT EXISTS ad_type (
   status TINYINT DEFAULT 1
 );
 
--- form_config table
 CREATE TABLE IF NOT EXISTS form_config (
   id INT AUTO_INCREMENT PRIMARY KEY,
   type_id INT,
@@ -21,7 +18,6 @@ CREATE TABLE IF NOT EXISTS form_config (
   FOREIGN KEY (type_id) REFERENCES ad_type(id) ON DELETE SET NULL
 );
 
--- ad table
 CREATE TABLE IF NOT EXISTS ad (
   id VARCHAR(36) PRIMARY KEY,
   type_id INT,
@@ -38,7 +34,6 @@ CREATE TABLE IF NOT EXISTS ad (
   FOREIGN KEY (type_id) REFERENCES ad_type(id) ON DELETE SET NULL
 );
 
--- video table
 CREATE TABLE IF NOT EXISTS video (
   id VARCHAR(36) PRIMARY KEY,
   ad_id VARCHAR(36),
@@ -52,7 +47,6 @@ CREATE TABLE IF NOT EXISTS video (
   FOREIGN KEY (ad_id) REFERENCES ad(id) ON DELETE SET NULL
 );
 
--- Seed ad_type minimal data
 INSERT IGNORE INTO ad_type (type_code, type_name, sort_rule, status) VALUES
 ('short_video', '短视频广告', '{"priority":2,"field":"price","order":"desc","secondField":"created_at","secondOrder":"desc"}', 1),
 ('brand', '品牌广告', '{"priority":1,"field":"price","order":"desc","secondField":"created_at","secondOrder":"desc"}', 1),

@@ -3,7 +3,6 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const ffmpeg = require('fluent-ffmpeg');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 
@@ -56,54 +55,9 @@ router.post('/upload', upload.single('video'), async (req, res) => {
 
   const filepath = file.path;
 
-  // 尝试使用 ffprobe 获取视频元数据，如果失败则使用默认值
   let duration = 0;
-  let width = 0;
-  let height = 0;
   let resolution = '';
   let previewUrl = null;
-
-  try {
-    // 检查 ffprobe 是否可用
-    const metadata = await new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(filepath, (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      });
-    });
-
-    const format = metadata.format || {};
-    const streams = metadata.streams || [];
-    const vstream = streams.find((s) => s.codec_type === 'video') || {};
-    duration = Math.floor(format.duration || 0);
-    width = vstream.width || 0;
-    height = vstream.height || 0;
-    resolution = width && height ? `${width}x${height}` : '';
-
-    // 尝试生成预览图
-    const previewDir = path.join(__dirname, '..', '..', 'uploads', 'previews');
-    if (!fs.existsSync(previewDir))
-      fs.mkdirSync(previewDir, { recursive: true });
-    const previewFilename = `${uuidv4()}.jpg`;
-
-    await new Promise((resolve, reject) => {
-      ffmpeg(filepath)
-        .screenshots({
-          count: 1,
-          timemarks: ['00:00:01'],
-          size: '480x?',
-          filename: previewFilename,
-          folder: previewDir,
-        })
-        .on('end', resolve)
-        .on('error', reject);
-    });
-
-    previewUrl = `/uploads/previews/${previewFilename}`;
-  } catch (err) {
-    console.warn('FFmpeg 不可用或视频处理失败，将使用默认值:', err.message);
-    // 继续处理，使用默认值
-  }
 
   const ext = path.extname(file.originalname).toLowerCase();
   const rules = type_code ? rulesByType[type_code] : null;
@@ -120,13 +74,6 @@ router.post('/upload', upload.single('video'), async (req, res) => {
       return res
         .status(400)
         .json({ code: 400, message: `不支持的文件格式 ${ext}` });
-    }
-    if (duration > 0 && (duration < rules.min || duration > rules.max)) {
-      fs.unlinkSync(filepath);
-      return res.status(400).json({
-        code: 400,
-        message: `视频时长需在 ${rules.min}-${rules.max} 秒之间`,
-      });
     }
   }
 

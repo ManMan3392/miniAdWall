@@ -1,11 +1,5 @@
 import { create } from 'zustand';
-import {
-  getAdList,
-  getAdTypes,
-  updateAd,
-  copyAd,
-  deleteAd,
-} from '../service/ad';
+import { getAdList, getAdTypes, updateAd, deleteAd } from '../service/ad';
 
 interface AdType {
   id: number;
@@ -46,11 +40,10 @@ interface AdStore {
   fetchAdTypes: () => Promise<void>;
   updatePrice: (adId: string, price: number) => Promise<any>;
   updateAdData: (adId: string, data: any) => Promise<any>;
-  copyAdData: (adId: string) => Promise<any>;
   deleteAdData: (adId: string) => Promise<any>;
   setSelectedAd: (ad: Ad | null) => void;
   setPage: (page: number) => void;
-  setLocalPrice: (adId: string, price: number) => void; // 仅前端乐观更新，不触发后端
+  setLocalPrice: (adId: string, price: number) => void;
 }
 
 function computeScore(ad: Ad): number {
@@ -173,7 +166,8 @@ function mergeAdLists(current: Ad[], incoming: Ad[]): Ad[] {
       prev.title !== next.title ||
       prev.content !== next.content ||
       prev.landing_url !== next.landing_url ||
-      prev.video_ids !== next.video_ids
+      prev.video_ids !== next.video_ids ||
+      prev.publisher !== next.publisher
     ) {
       result.push(next);
     } else {
@@ -243,15 +237,11 @@ export const useAdStore = create<AdStore>((set, get) => ({
       markDirty(adId, get, set);
     }
     try {
-      console.log('[useAdStore] updatePrice request', { adId, price });
-      // 使用通用更新接口确保与编辑页行为一致（某些环境下专用 price 接口可能不同步）
       const response = await updateAd(adId, { price });
       console.log('[useAdStore] updateAd response', response);
       if (response.code !== 200) {
         throw new Error('出价更新失败 code=' + response.code);
       }
-      // 后端成功返回后，尝试多次拉取最新列表以确保后端已持久化价格
-      // 如果在重试里已经看到后端价格一致，则中断重试；否则最后做一次完整刷新
       const maxAttempts = 4;
       let matched = false;
       for (let i = 0; i < maxAttempts; i++) {
@@ -327,19 +317,6 @@ export const useAdStore = create<AdStore>((set, get) => ({
     const updated = prev.map((a) => (a.id === adId ? { ...a, price } : a));
     set({ adList: updated });
     markDirty(adId, get, set);
-  },
-
-  copyAdData: async (adId: string) => {
-    try {
-      const response = await copyAd(adId);
-      if (response.code === 200) {
-        await get().fetchAdList(undefined, undefined, { silent: true });
-      }
-      return response;
-    } catch (error) {
-      console.error('复制广告失败:', error);
-      throw error;
-    }
   },
 
   deleteAdData: async (adId: string) => {

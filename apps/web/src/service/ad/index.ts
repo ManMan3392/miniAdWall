@@ -43,26 +43,11 @@ export function createAd(data: {
   });
 }
 
-export function updateAdPrice(adId: string, price: number) {
-  return myRequest.request({
-    url: `/api/ads/${adId}/price`,
-    method: 'PUT',
-    data: { price },
-  });
-}
-
 export function updateAd(adId: string, data: any) {
   return myRequest.request({
     url: `/api/ads/${adId}`,
     method: 'PUT',
     data,
-  });
-}
-
-export function copyAd(adId: string) {
-  return myRequest.request({
-    url: `/api/ads/${adId}/copy`,
-    method: 'POST',
   });
 }
 

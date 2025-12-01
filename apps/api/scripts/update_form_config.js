@@ -2,7 +2,6 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// 显式解析并加载 .env，打印关键调试信息以便定位连接问题
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[update_form_config] resolve .env ->', envPath);
 const envResult = dotenv.config({ path: envPath });
@@ -24,7 +23,6 @@ const dns = require('dns').promises;
 
 async function createPoolWithResolvedHost() {
   let host = process.env.DB_HOST || '127.0.0.1';
-  // 优先解析 IPv4 地址，若失败则使用原始 host
   try {
     const res = await dns.lookup(host, { family: 4 });
     if (res && res.address) {
@@ -47,12 +45,10 @@ async function createPoolWithResolvedHost() {
     database: process.env.DB_NAME || 'adwall',
     waitForConnections: true,
     connectionLimit: 10,
-    // 设置连接超时（ms），避免长时间挂起
     connectTimeout: 10000,
   });
 }
 
-// 完善的表单配置，包含所有必需的基础字段
 const formConfigs = {
   short_video: {
     formTitle: '创建短视频广告',
@@ -213,10 +209,8 @@ async function updateFormConfigs() {
   try {
     const pool = await createPoolWithResolvedHost();
     connection = await pool.getConnection();
-    console.log('✅ 数据库连接成功 (using pool)');
 
     for (const [typeCode, config] of Object.entries(formConfigs)) {
-      // 获取 type_id
       const [typeRows] = await connection.query(
         'SELECT id FROM ad_type WHERE type_code = ? LIMIT 1',
         [typeCode],
@@ -230,7 +224,6 @@ async function updateFormConfigs() {
       const typeId = typeRows[0].id;
       const configValue = JSON.stringify(config);
 
-      // 更新或插入配置
       await connection.query(
         `INSERT INTO form_config (type_id, config_key, config_value, update_time)
          VALUES (?, 'ad_create_form', ?, NOW())
@@ -241,7 +234,6 @@ async function updateFormConfigs() {
       console.log(`✅ 已更新 ${typeCode} 的表单配置`);
     }
 
-    // 显示当前所有配置
     const [configs] = await connection.query(`
       SELECT 
         at.type_code,
@@ -273,7 +265,7 @@ async function updateFormConfigs() {
           '[update_form_config] config_value preview:',
           row.config_value ? row.config_value.slice(0, 800) : '<empty>',
         );
-        return; // skip this row but continue others
+        return;
       }
 
       console.log(`\n${row.type_name} (${row.type_code}):`);
