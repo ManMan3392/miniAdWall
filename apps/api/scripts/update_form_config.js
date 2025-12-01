@@ -90,6 +90,12 @@ const formConfigs = {
         label: '初始出价（元/千次曝光）',
         required: true,
         placeholder: '请输入出价，最低0.5元',
+        validation: {
+          required: true,
+          type: 'number',
+          message: '初始出价必须为数字',
+          min: 0.5,
+        },
       },
       {
         name: 'videos',
@@ -139,6 +145,12 @@ const formConfigs = {
         label: '初始出价（元/千次曝光）',
         required: true,
         placeholder: '品牌广告基础出价较高，建议≥10元',
+        validation: {
+          required: true,
+          type: 'number',
+          message: '初始出价必须为数字',
+          min: 10,
+        },
       },
       {
         name: 'brand_slogan',
@@ -195,6 +207,12 @@ const formConfigs = {
         label: '初始出价（元/转化）',
         required: true,
         placeholder: '请输入出价，最低0.1元',
+        validation: {
+          required: true,
+          type: 'number',
+          message: '初始出价必须为数字',
+          min: 0.1,
+        },
       },
       {
         name: 'conversion_target',
