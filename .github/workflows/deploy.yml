@@ -11,7 +11,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy to server over SSH
+      - name: Sync files to server (rsync)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # add remote host to known_hosts to avoid prompt
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts || true
+          # use rsync over ssh to push repository to remote path
+          rsync -az --delete --exclude='.git' --exclude='node_modules' -e "ssh -i ~/.ssh/id_rsa -p ${{ secrets.DEPLOY_PORT }} -o StrictHostKeyChecking=no" ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/mini-adwall/miniAdWall
+
+      - name: Run remote install & restart
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -20,15 +33,12 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             set -e
-            cd /opt/mini-adwall/miniAdWall || exit 1
-            git fetch --all
-            git reset --hard origin/main
             # Ensure pnpm is available
             if ! command -v pnpm >/dev/null 2>&1; then
               npm install -g pnpm
             fi
             # Only deploy backend (frontend is not on this server)
-            cd apps/api
+            cd /opt/mini-adwall/miniAdWall/apps/api || exit 1
             pnpm install --frozen-lockfile || pnpm install
             # Ensure uploads directory exists
             mkdir -p uploads
