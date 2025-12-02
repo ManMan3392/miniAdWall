@@ -52,7 +52,7 @@ export interface AdStore {
 export const useAdStore = create<AdStore>((set, get) => ({
   adList: [],
   currentPage: 1,
-  pageSize: 9,
+  pageSize: 12,
   total: 0,
   loading: false,
   adTypes: [],
@@ -102,10 +102,10 @@ export const useAdStore = create<AdStore>((set, get) => ({
   },
 
   updatePrice: async (adId: string, price: number) => {
-    const prev = get().adList;
-    const target = prev.find((a) => a.id === adId);
-    if (target) {
-      const optimisticallyUpdated = prev.map((a) =>
+    const prevList = get().adList;
+    const prevItem = prevList.find((a) => a.id === adId);
+    if (prevItem) {
+      const optimisticallyUpdated = prevList.map((a) =>
         a.id === adId ? { ...a, price } : a,
       );
       set({ adList: optimisticallyUpdated });
@@ -136,7 +136,13 @@ export const useAdStore = create<AdStore>((set, get) => ({
       }
       return response;
     } catch (error) {
-      set({ adList: prev });
+      if (prevItem) {
+        set({
+          adList: get().adList.map((a) => (a.id === adId ? prevItem : a)),
+        });
+      } else {
+        set({ adList: prevList });
+      }
       console.error('更新出价失败:', error);
       throw error;
     }
@@ -144,6 +150,7 @@ export const useAdStore = create<AdStore>((set, get) => ({
 
   updateAdData: async (adId: string, data: any) => {
     const prev = get().adList;
+    const prevItem = prev.find((a) => a.id === adId);
     const affectsSort =
       Object.prototype.hasOwnProperty.call(data, 'price') ||
       Object.prototype.hasOwnProperty.call(data, 'heat');
@@ -166,8 +173,7 @@ export const useAdStore = create<AdStore>((set, get) => ({
             a.id === String(updatedAd.id) ? { ...a, ...updatedAd } : a,
           ),
         });
-      }
-      if (affectsSort) {
+      } else {
         setTimeout(() => {
           get()
             .fetchAdList(undefined, undefined, { silent: true })
@@ -176,7 +182,13 @@ export const useAdStore = create<AdStore>((set, get) => ({
       }
       return response;
     } catch (error) {
-      set({ adList: prev });
+      if (prevItem) {
+        set({
+          adList: get().adList.map((a) => (a.id === adId ? prevItem : a)),
+        });
+      } else {
+        set({ adList: prev });
+      }
       console.error('更新广告失败:', error);
       throw error;
     }

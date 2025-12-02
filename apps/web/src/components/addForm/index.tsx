@@ -24,6 +24,7 @@ interface AddFormProps {
   editMode?: boolean;
   editData?: Ad;
 }
+
 const AddForm: FC<AddFormProps> = ({
   initialTypeCode,
   visible = true,
@@ -81,6 +82,7 @@ const AddForm: FC<AddFormProps> = ({
     form.setFieldsValue({ type_code: initialTypeCode });
 
     if (editData) {
+      setTypeId(editData.type_id);
       const formValues: any = {
         type_code: editData.type_code || initialTypeCode,
       };
@@ -126,50 +128,6 @@ const AddForm: FC<AddFormProps> = ({
               } else if (typeof window !== 'undefined' && url) {
                 finalUrl = `${window.location.origin}${url.startsWith('/') ? url : '/' + url}`;
               } else {
-                if (formConfig?.fields) {
-                  formConfig.fields.forEach((field) => {
-                    if (field.type === 'image-upload') {
-                      const topVal = (editData as any)[field.name];
-                      const extVal = Object.prototype.hasOwnProperty.call(
-                        extObj,
-                        field.name,
-                      )
-                        ? extObj[field.name]
-                        : undefined;
-                      const src =
-                        typeof topVal !== 'undefined' && topVal
-                          ? topVal
-                          : extVal;
-                      if (src) {
-                        let finalUrl = '';
-                        try {
-                          if (
-                            typeof src === 'string' &&
-                            /^https?:\/\//i.test(src)
-                          ) {
-                            finalUrl = src;
-                          } else if (typeof window !== 'undefined' && src) {
-                            finalUrl = `${window.location.origin}${String(src).startsWith('/') ? String(src) : '/' + String(src)}`;
-                          } else {
-                            finalUrl = String(src || '');
-                          }
-                        } catch {
-                          finalUrl = String(src || '');
-                        }
-                        const fileObj: UploadFile = {
-                          uid: `img-${field.name}`,
-                          name: `image_${field.name}`,
-                          status: 'done',
-                          url: finalUrl,
-                        };
-                        setImageFileLists((prev) => ({
-                          ...prev,
-                          [field.name]: [fileObj],
-                        }));
-                      }
-                    }
-                  });
-                }
                 finalUrl = String(url || '');
               }
             } catch {
@@ -265,12 +223,10 @@ const AddForm: FC<AddFormProps> = ({
   const dynamicFields = useMemo(() => formConfig?.fields || [], [formConfig]);
 
   const onFinish = async (values: any) => {
-    if (!editMode) {
-      const videoField = dynamicFields.find((f) => f.type === 'video-upload');
-      if (videoField?.required && videoIds.length === 0) {
-        message.error('请先上传视频');
-        return;
-      }
+    const videoField = dynamicFields.find((f) => f.type === 'video-upload');
+    if (videoField?.required && videoIds.length === 0) {
+      message.error('请先上传视频');
+      return;
     }
 
     const payload: any = {
@@ -314,8 +270,6 @@ const AddForm: FC<AddFormProps> = ({
 
     if (Object.keys(extInfo).length > 0) payload.ext_info = extInfo;
 
-    console.log('表单提交 - 最终payload:', payload);
-
     setSubmitting(true);
     try {
       let resp;
@@ -325,7 +279,6 @@ const AddForm: FC<AddFormProps> = ({
         resp = await createAd(payload);
       }
 
-      console.log('操作响应:', resp);
       if (resp.code === 200) {
         message.success(editMode ? '更新成功' : '创建成功');
         form.resetFields();
