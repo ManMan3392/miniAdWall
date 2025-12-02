@@ -10,7 +10,6 @@ import {
   getFormConfig,
   uploadVideo,
   createAd,
-  updateAd,
   type FormConfig,
 } from '@/service/ad';
 import { buildRules } from './utils/buildRules';
@@ -34,7 +33,7 @@ const AddForm: FC<AddFormProps> = ({
   editData,
 }) => {
   const [form] = Form.useForm();
-  const { adTypes, fetchAdTypes } = useAdStore();
+  const { adTypes, fetchAdTypes, updateAdData } = useAdStore();
   const [typeCode, setTypeCode] = useState<string | undefined>(initialTypeCode);
   const [typeId, setTypeId] = useState<number | undefined>(undefined);
   const [formConfig, setFormConfig] = useState<FormConfig | null>(null);
@@ -274,7 +273,7 @@ const AddForm: FC<AddFormProps> = ({
     try {
       let resp;
       if (editMode && editData) {
-        resp = await updateAd(editData.id, payload);
+        resp = await updateAdData(editData.id, payload);
       } else {
         resp = await createAd(payload);
       }

@@ -2,7 +2,6 @@ import type { ReactNode, FC } from 'react';
 import { memo, useEffect, useState, useCallback, useRef } from 'react';
 
 import style from './style.module.less';
-import { Pagination } from 'antd';
 import AdDetail from '../adDetail';
 import AdDetailSkeleton from '../adDetailSkeleton';
 import { useAdStore, type Ad } from '@/store/index';
@@ -22,9 +21,6 @@ const AdList: FC<Iprops> = () => {
     deleteAdData,
     adTypes,
     fetchAdTypes,
-    currentPage,
-    pageSize,
-    total,
   } = useAdStore();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -47,6 +43,7 @@ const AdList: FC<Iprops> = () => {
 
   const flushPrices = useCallback(async () => {
     const entries = Object.entries(pendingRef.current || {});
+    console.log('[AdList] flushPrices', entries);
     pendingRef.current = {};
     setFlushTimer(null);
     for (const [id, val] of entries) {
@@ -161,22 +158,6 @@ const AdList: FC<Iprops> = () => {
             暂无广告数据
           </div>
         )}
-      </div>
-
-      <div style={{ textAlign: 'right', padding: '60px 16px' }}>
-        <Pagination
-          current={currentPage}
-          pageSize={pageSize}
-          total={total}
-          showSizeChanger
-          showQuickJumper
-          onChange={(page, size) => {
-            fetchAdList(page, size, { silent: false });
-          }}
-          onShowSizeChange={(_current, size) => {
-            fetchAdList(1, size, { silent: false });
-          }}
-        />
       </div>
 
       {alertVisible && (
