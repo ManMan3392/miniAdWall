@@ -7,6 +7,7 @@ import AdDetailSkeleton from '../adDetailSkeleton';
 import { useAdStore, type Ad } from '@/store/index';
 import AdAlert from '../adAlert';
 import AdListHeader from './cpns/adListHead';
+import { Pagination } from 'antd';
 
 interface Iprops {
   children?: ReactNode;
@@ -21,6 +22,9 @@ const AdList: FC<Iprops> = () => {
     deleteAdData,
     adTypes,
     fetchAdTypes,
+    currentPage,
+    pageSize,
+    total,
   } = useAdStore();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -159,7 +163,21 @@ const AdList: FC<Iprops> = () => {
           </div>
         )}
       </div>
-
+      <div style={{ textAlign: 'right', padding: '60px 16px' }}>
+        <Pagination
+          current={currentPage}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showQuickJumper
+          onChange={(page, size) => {
+            fetchAdList(page, size, { silent: false });
+          }}
+          onShowSizeChange={(_current, size) => {
+            fetchAdList(1, size, { silent: false });
+          }}
+        />
+      </div>
       {alertVisible && (
         <AdAlert
           alertMessage={alertMessage}
