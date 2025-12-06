@@ -71,4 +71,43 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/', async (req, res) => {
+  const { type_code, config_value, config_key } = req.body;
+  if (!type_code || !config_value) {
+    return res
+      .status(400)
+      .json({ code: 400, message: 'type_code and config_value required' });
+  }
+
+  try {
+    const [types] = await db.query(
+      'SELECT id FROM ad_type WHERE type_code = ? LIMIT 1',
+      [type_code],
+    );
+    if (!types || types.length === 0) {
+      return res.status(404).json({ code: 404, message: 'Type not found' });
+    }
+    const typeId = types[0].id;
+    const key = config_key || 'ad_create_form';
+
+    // Ensure config_value is a string
+    const valueStr =
+      typeof config_value === 'string'
+        ? config_value
+        : JSON.stringify(config_value);
+
+    await db.query(
+      `INSERT INTO form_config (type_id, config_key, config_value, update_time)
+       VALUES (?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE config_value = VALUES(config_value), update_time = NOW()`,
+      [typeId, key, valueStr],
+    );
+
+    res.json({ code: 200, message: 'Configuration updated successfully' });
+  } catch (error) {
+    console.error('Update form config error:', error);
+    res.status(500).json({ code: 500, message: 'Internal server error' });
+  }
+});
+
 module.exports = router;

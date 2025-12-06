@@ -1,9 +1,10 @@
 import type { ReactNode, FC } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import style from './style.module.less';
-import { Button, Dropdown, type MenuProps } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Dropdown, type MenuProps, Modal, Input, message } from 'antd';
+import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import AdModal from '@/components/adModal';
+import TypeManagerModal from '../typeManagerModal';
 
 interface Iprops {
   children?: ReactNode;
@@ -40,6 +41,22 @@ const AdListHeader: FC<Iprops> = ({
   const [selectedTypeCode, setSelectedTypeCode] = useState<string | undefined>(
     undefined,
   );
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [typeManagerVisible, setTypeManagerVisible] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  const handleAuth = () => {
+    if (password === 'admin') {
+      setAuthModalVisible(false);
+      setPassword('');
+      setAuthError('');
+      setTypeManagerVisible(true);
+      message.success('验证通过');
+    } else {
+      setAuthError('密码错误，验证失败');
+    }
+  };
 
   const menuItems = useMemo(
     () =>
@@ -105,6 +122,13 @@ const AdListHeader: FC<Iprops> = ({
   return (
     <>
       <div className={style.add}>
+        <Button
+          icon={<SettingOutlined />}
+          style={{ marginRight: 12 }}
+          onClick={() => setAuthModalVisible(true)}
+        >
+          类型管理
+        </Button>
         <Dropdown menu={menuProps} trigger={['click']}>
           <Button
             type="primary"
@@ -137,6 +161,36 @@ const AdListHeader: FC<Iprops> = ({
         }
         onCreated={showModal ? handleCreated : handleEdited}
         initialTypeCode={showModal ? selectedTypeCode : editingAd?.type_code}
+      />
+      <Modal
+        title="管理员验证"
+        open={authModalVisible}
+        onOk={handleAuth}
+        onCancel={() => {
+          setAuthModalVisible(false);
+          setPassword('');
+          setAuthError('');
+        }}
+      >
+        <Input.Password
+          placeholder="请输入管理员密码"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (authError) setAuthError('');
+          }}
+          onPressEnter={handleAuth}
+          status={authError ? 'error' : ''}
+        />
+        {authError && (
+          <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '5px' }}>
+            {authError}
+          </div>
+        )}
+      </Modal>
+      <TypeManagerModal
+        visible={typeManagerVisible}
+        onCancel={() => setTypeManagerVisible(false)}
       />
     </>
   );
