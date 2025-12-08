@@ -123,8 +123,17 @@ const AdListHeader: FC<Iprops> = ({
     <>
       <div className={style.add}>
         <Button
-          icon={<SettingOutlined />}
-          style={{ marginRight: 12 }}
+          type="primary"
+          size="large"
+          icon={<SettingOutlined style={{ fontSize: 15 }} />}
+          style={{
+            backgroundColor: 'rgb(51, 138, 255)',
+            borderRadius: '5px',
+            fontSize: '18px',
+            padding: '0px 23px',
+            fontWeight: '500',
+            marginRight: 12,
+          }}
           onClick={() => setAuthModalVisible(true)}
         >
           类型管理

@@ -99,11 +99,13 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [fields, setFields] = useState<FieldConfig[]>([]);
+  const [defaultMode, setDefaultMode] = useState<boolean>(false);
 
   // Field Edit Modal State
   const [fieldModalVisible, setFieldModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<FieldConfig | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
+  const [editingIsDefault, setEditingIsDefault] = useState<boolean>(false);
   const [fieldForm] = Form.useForm();
 
   useEffect(() => {
@@ -118,8 +120,10 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
             const loadedFields = data.fields || [];
             if (loadedFields.length === 0) {
               setFields(DEFAULT_FIELDS);
+              setDefaultMode(true);
             } else {
               setFields(loadedFields);
+              setDefaultMode(false);
             }
           } else {
             message.error(res.message || '获取配置失败');
@@ -160,11 +164,15 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   const handleAddField = () => {
     setEditingField(null);
     setEditingIndex(-1);
+    setEditingIsDefault(false);
     fieldForm.resetFields();
     setFieldModalVisible(true);
   };
 
   const handleEditField = (record: FieldConfig, index: number) => {
+    const isDefault =
+      defaultMode && DEFAULT_FIELDS.some((f) => f.name === record.name);
+    setEditingIsDefault(!!isDefault);
     setEditingField(record);
     setEditingIndex(index);
     // Flatten data for form
@@ -189,44 +197,71 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   const handleSaveField = async () => {
     try {
       const values = await fieldForm.validateFields();
-      const newField: FieldConfig = {
-        name: values.name,
-        label: values.label,
-        type: values.type,
-        placeholder: values.placeholder,
-        required: values.required,
-      };
+      // If editing a default field, only allow changing label and placeholder
+      let newField: FieldConfig;
+      const isEditingDefault = editingIsDefault;
+      const uploadTypes = ['video-upload', 'image-upload', 'file-upload'];
+      const isUploadType = uploadTypes.includes(values.type);
 
-      if (values.type === 'select' && values.enums) {
+      if (isEditingDefault) {
+        const original = fields[editingIndex];
+        // For default fields keep original props, only update label and placeholder
+        newField = {
+          ...original,
+          label: values.label,
+          // only update placeholder if not an upload type
+          placeholder: isUploadType ? original.placeholder : values.placeholder,
+        };
+      } else {
+        newField = {
+          name: values.name,
+          label: values.label,
+          type: values.type,
+          // do not persist placeholder for upload types
+          placeholder: isUploadType ? undefined : values.placeholder,
+          required: values.required,
+        } as FieldConfig;
+      }
+
+      if (!isEditingDefault && values.type === 'select' && values.enums) {
         newField.enums = values.enums
           .split(/[,，]/)
           .map((s: string) => s.trim())
           .filter(Boolean);
       }
 
-      // Construct validation object
-      const validation: any = {};
-      if (values.required) {
-        validation.required = true;
-      }
+      // Construct validation object (skip for default fields and upload/select types)
+      const forbiddenValidationTypes = [
+        'video-upload',
+        'image-upload',
+        'file-upload',
+        'select',
+      ];
+      const isUploadOrSelect = forbiddenValidationTypes.includes(values.type);
+      if (!isEditingDefault && !isUploadOrSelect) {
+        const validation: any = {};
+        if (values.required) {
+          validation.required = true;
+        }
 
-      // Handle validation type
-      if (values.validationType) {
-        validation.type = values.validationType;
-      } else if (values.type === 'number') {
-        validation.type = 'number';
-      }
+        // Handle validation type
+        if (values.validationType) {
+          validation.type = values.validationType;
+        } else if (values.type === 'number') {
+          validation.type = 'number';
+        }
 
-      if (values.min !== undefined) validation.min = values.min;
-      if (values.max !== undefined) validation.max = values.max;
-      if (values.pattern) validation.pattern = values.pattern;
+        if (values.min !== undefined) validation.min = values.min;
+        if (values.max !== undefined) validation.max = values.max;
+        if (values.pattern) validation.pattern = values.pattern;
 
-      if (values.validationMessage) {
-        validation.message = values.validationMessage;
-      }
+        if (values.validationMessage) {
+          validation.message = values.validationMessage;
+        }
 
-      if (Object.keys(validation).length > 0) {
-        newField.validation = validation;
+        if (Object.keys(validation).length > 0) {
+          newField.validation = validation;
+        }
       }
 
       const newFields = [...fields];
@@ -257,12 +292,18 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
       title: '字段名 (name)',
       dataIndex: 'name',
       width: 120,
-      render: (text: string, _: FieldConfig, index: number) => (
-        <Input
-          value={text}
-          onChange={(e) => handleFieldChange(index, 'name', e.target.value)}
-        />
-      ),
+      render: (text: string, _: FieldConfig, index: number) => {
+        const isDefault =
+          defaultMode &&
+          DEFAULT_FIELDS.some((f) => f.name === fields[index]?.name);
+        return (
+          <Input
+            value={text}
+            disabled={!!isDefault}
+            onChange={(e) => handleFieldChange(index, 'name', e.target.value)}
+          />
+        );
+      },
     },
     {
       title: '显示名 (label)',
@@ -279,30 +320,45 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
       title: '类型',
       dataIndex: 'type',
       width: 120,
-      render: (text: string, _: FieldConfig, index: number) => (
-        <Select
-          value={text}
-          style={{ width: '100%' }}
-          onChange={(val) => handleFieldChange(index, 'type', val)}
-        >
-          <Select.Option value="input">文本</Select.Option>
-          <Select.Option value="number">数字</Select.Option>
-          <Select.Option value="select">下拉</Select.Option>
-          <Select.Option value="video-upload">视频</Select.Option>
-          <Select.Option value="image-upload">图片</Select.Option>
-        </Select>
-      ),
+      render: (text: string, _: FieldConfig, index: number) => {
+        const isDefault =
+          defaultMode &&
+          DEFAULT_FIELDS.some((f) => f.name === fields[index]?.name);
+        return isDefault ? (
+          <span>{text}</span>
+        ) : (
+          <Select
+            value={text}
+            style={{ width: '100%' }}
+            onChange={(val) => handleFieldChange(index, 'type', val)}
+          >
+            <Select.Option value="input">文本</Select.Option>
+            <Select.Option value="number">数字</Select.Option>
+            <Select.Option value="select">下拉</Select.Option>
+            <Select.Option value="video-upload">视频</Select.Option>
+            <Select.Option value="image-upload">图片</Select.Option>
+          </Select>
+        );
+      },
     },
     {
       title: '必填',
       dataIndex: 'required',
       width: 80,
-      render: (val: boolean, _: FieldConfig, index: number) => (
-        <Switch
-          checked={val}
-          onChange={(checked) => handleFieldChange(index, 'required', checked)}
-        />
-      ),
+      render: (val: boolean, _: FieldConfig, index: number) => {
+        const isDefault =
+          defaultMode &&
+          DEFAULT_FIELDS.some((f) => f.name === fields[index]?.name);
+        return (
+          <Switch
+            checked={val}
+            disabled={!!isDefault}
+            onChange={(checked) =>
+              handleFieldChange(index, 'required', checked)
+            }
+          />
+        );
+      },
     },
     {
       title: '占位符',
@@ -321,22 +377,29 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
       title: '操作',
       key: 'action',
       width: 100,
-      render: (_: any, record: FieldConfig, index: number) => (
-        <Space>
-          <Button
-            type="text"
-            icon={<SettingOutlined />}
-            onClick={() => handleEditField(record, index)}
-            title="高级设置"
-          />
-          <Popconfirm
-            title="确定删除该字段吗？"
-            onConfirm={() => handleDeleteField(index)}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_: any, record: FieldConfig, index: number) => {
+        const isDefault =
+          defaultMode &&
+          DEFAULT_FIELDS.some((f) => f.name === fields[index]?.name);
+        return (
+          <Space>
+            <Button
+              type="text"
+              icon={<SettingOutlined />}
+              onClick={() => handleEditField(record, index)}
+              title="高级设置"
+            />
+            {!isDefault && (
+              <Popconfirm
+                title="确定删除该字段吗？"
+                onConfirm={() => handleDeleteField(index)}
+              >
+                <Button type="text" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -398,7 +461,7 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
               rules={[{ required: true, message: '请输入字段名' }]}
               style={{ width: 260 }}
             >
-              <Input placeholder="例如: price" />
+              <Input placeholder="例如: price" disabled={editingIsDefault} />
             </Form.Item>
             <Form.Item
               name="label"
@@ -418,7 +481,7 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
               style={{ width: 260 }}
               initialValue="input"
             >
-              <Select>
+              <Select disabled={editingIsDefault}>
                 <Select.Option value="input">文本输入 (input)</Select.Option>
                 <Select.Option value="number">数字输入 (number)</Select.Option>
                 <Select.Option value="select">下拉选择 (select)</Select.Option>
@@ -436,12 +499,28 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
               valuePropName="checked"
               initialValue={true}
             >
-              <Switch />
+              <Switch disabled={editingIsDefault} />
             </Form.Item>
           </Space>
 
-          <Form.Item name="placeholder" label="占位提示 (Placeholder)">
-            <Input placeholder="请输入..." />
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, current) => prev.type !== current.type}
+          >
+            {({ getFieldValue }) => {
+              const t = getFieldValue('type');
+              const uploadTypes = [
+                'video-upload',
+                'image-upload',
+                'file-upload',
+              ];
+              const hidePlaceholder = uploadTypes.includes(t);
+              return hidePlaceholder ? null : (
+                <Form.Item name="placeholder" label="占位提示 (Placeholder)">
+                  <Input placeholder="请输入..." disabled={editingIsDefault} />
+                </Form.Item>
+              );
+            }}
           </Form.Item>
 
           <Form.Item
@@ -455,44 +534,103 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
                   label="选项列表 (逗号分隔)"
                   rules={[{ required: true, message: '请输入选项' }]}
                 >
-                  <Input placeholder="例如: App下载, 表单提交, 商品购买" />
+                  <Input
+                    placeholder="例如: App下载, 表单提交, 商品购买"
+                    disabled={editingIsDefault}
+                  />
                 </Form.Item>
               ) : null
             }
           </Form.Item>
 
-          <Form.Item label="验证规则 (Validation)" style={{ marginBottom: 0 }}>
-            <Space align="start" wrap>
-              <Form.Item
-                name="validationType"
-                label="数据类型校验"
-                style={{ width: 160 }}
-              >
-                <Select placeholder="选择类型" allowClear>
-                  <Select.Option value="string">字符串 (string)</Select.Option>
-                  <Select.Option value="number">数字 (number)</Select.Option>
-                  <Select.Option value="boolean">
-                    布尔值 (boolean)
-                  </Select.Option>
-                  <Select.Option value="url">URL链接</Select.Option>
-                  <Select.Option value="email">邮箱 (email)</Select.Option>
-                  <Select.Option value="integer">整数 (integer)</Select.Option>
-                  <Select.Option value="float">浮点数 (float)</Select.Option>
-                </Select>
-              </Form.Item>
-              <Form.Item name="min" label="最小值/最小长度">
-                <InputNumber placeholder="Min" style={{ width: 120 }} />
-              </Form.Item>
-              <Form.Item name="max" label="最大值/最大长度">
-                <InputNumber placeholder="Max" style={{ width: 120 }} />
-              </Form.Item>
-            </Space>
-            <Form.Item name="pattern" label="正则校验 (Pattern)">
-              <Input placeholder="例如: ^[a-zA-Z0-9]+$" />
-            </Form.Item>
-            <Form.Item name="validationMessage" label="错误提示信息">
-              <Input placeholder="例如: 初始出价必须为数字" />
-            </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, current) => prev.type !== current.type}
+          >
+            {({ getFieldValue }) => {
+              const t = getFieldValue('type');
+              const forbiddenValidationTypes = [
+                'video-upload',
+                'image-upload',
+                'file-upload',
+                'select',
+              ];
+              const isForbidden = forbiddenValidationTypes.includes(t);
+              if (isForbidden) {
+                return (
+                  <div style={{ color: '#888', fontSize: 12, marginTop: 8 }}>
+                    上传或下拉类型不支持配置校验规则
+                  </div>
+                );
+              }
+
+              return (
+                <Form.Item
+                  label="验证规则 (Validation)"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Space align="start" wrap>
+                    <Form.Item
+                      name="validationType"
+                      label="数据类型校验"
+                      style={{ width: 160 }}
+                    >
+                      <Select
+                        placeholder="选择类型"
+                        allowClear
+                        disabled={editingIsDefault}
+                      >
+                        <Select.Option value="string">
+                          字符串 (string)
+                        </Select.Option>
+                        <Select.Option value="number">
+                          数字 (number)
+                        </Select.Option>
+                        <Select.Option value="boolean">
+                          布尔值 (boolean)
+                        </Select.Option>
+                        <Select.Option value="url">URL链接</Select.Option>
+                        <Select.Option value="email">
+                          邮箱 (email)
+                        </Select.Option>
+                        <Select.Option value="integer">
+                          整数 (integer)
+                        </Select.Option>
+                        <Select.Option value="float">
+                          浮点数 (float)
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="min" label="最小值/最小长度">
+                      <InputNumber
+                        placeholder="Min"
+                        style={{ width: 120 }}
+                        disabled={editingIsDefault}
+                      />
+                    </Form.Item>
+                    <Form.Item name="max" label="最大值/最大长度">
+                      <InputNumber
+                        placeholder="Max"
+                        style={{ width: 120 }}
+                        disabled={editingIsDefault}
+                      />
+                    </Form.Item>
+                  </Space>
+                  <Form.Item name="pattern" label="正则校验 (Pattern)">
+                    <Input
+                      placeholder="例如: ^[a-zA-Z0-9]+$"
+                      disabled={editingIsDefault}
+                    />
+                  </Form.Item>
+                  <Form.Item name="validationMessage" label="错误提示信息">
+                    <Input
+                      placeholder="例如: 初始出价必须为数字"
+                      disabled={editingIsDefault}
+                    />
+                  </Form.Item>
+                </Form.Item>
+              );
+            }}
           </Form.Item>
         </Form>
       </Modal>
