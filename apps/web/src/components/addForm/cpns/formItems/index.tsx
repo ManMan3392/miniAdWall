@@ -52,8 +52,12 @@ const FormItems: FC<Iprops> = ({ f, buildRules }) => {
         <TextArea
           rows={4}
           placeholder={f.placeholder || `请输入${f.label || f.name}`}
-          maxLength={(f as any).validation?.max}
-          showCount={!!(f as any).validation?.max}
+          maxLength={
+            (f as any).validation?.maxLength ?? (f as any).validation?.max
+          }
+          showCount={
+            !!((f as any).validation?.maxLength ?? (f as any).validation?.max)
+          }
         />
       ) : (
         <Input

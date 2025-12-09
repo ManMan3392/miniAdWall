@@ -39,6 +39,8 @@ interface FieldConfig {
     message?: string;
     min?: number;
     max?: number;
+    minLength?: number;
+    maxLength?: number;
     pattern?: string;
   };
 }
@@ -185,8 +187,11 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     fieldForm.setFieldsValue({
       ...record,
       enums: record.enums?.join(','),
-      min: record.validation?.min,
-      max: record.validation?.max,
+      // 支持数字/长度分开存储
+      minValue: record.validation?.min,
+      maxValue: record.validation?.max,
+      minLength: record.validation?.minLength,
+      maxLength: record.validation?.maxLength,
       validationType: record.validation?.type,
       pattern: record.validation?.pattern,
       validationMessage: record.validation?.message,
@@ -235,8 +240,20 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
           if (values.required) validation.required = true;
           if (values.validationType) validation.type = values.validationType;
           else if (values.type === 'number') validation.type = 'number';
-          if (values.min !== undefined) validation.min = values.min;
-          if (values.max !== undefined) validation.max = values.max;
+          else if (values.type === 'input') validation.type = 'string';
+
+          // 数值范围（number 类型）
+          if (typeof values.minValue !== 'undefined')
+            validation.min = values.minValue;
+          if (typeof values.maxValue !== 'undefined')
+            validation.max = values.maxValue;
+
+          // 长度校验（input 或 number 的位数校验）
+          if (typeof values.minLength !== 'undefined')
+            validation.minLength = values.minLength;
+          if (typeof values.maxLength !== 'undefined')
+            validation.maxLength = values.maxLength;
+
           if (values.pattern) validation.pattern = values.pattern;
           if (values.validationMessage)
             validation.message = values.validationMessage;
@@ -261,6 +278,27 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
             .split(/[,，]/)
             .map((s: string) => s.trim())
             .filter(Boolean);
+        }
+        // 构造 validation（若有）
+        if (!['video-upload', 'file-upload', 'select'].includes(values.type)) {
+          const validation: any = {};
+          if (values.required) validation.required = true;
+          if (values.validationType) validation.type = values.validationType;
+          else if (values.type === 'number') validation.type = 'number';
+          else if (values.type === 'input') validation.type = 'string';
+
+          if (typeof values.minValue !== 'undefined')
+            validation.min = values.minValue;
+          if (typeof values.maxValue !== 'undefined')
+            validation.max = values.maxValue;
+          if (typeof values.minLength !== 'undefined')
+            validation.minLength = values.minLength;
+          if (typeof values.maxLength !== 'undefined')
+            validation.maxLength = values.maxLength;
+          if (values.pattern) validation.pattern = values.pattern;
+          if (values.validationMessage)
+            validation.message = values.validationMessage;
+          if (Object.keys(validation).length > 0) f.validation = validation;
         }
         setFields((prev) => [...prev, f]);
       }
@@ -473,10 +511,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
                 <Select.Option value="video-upload">
                   视频上传 (video-upload)
                 </Select.Option>
-
-                <Select.Option value="file-upload">
-                  文件上传 (file-upload)
-                </Select.Option>
               </Select>
             </Form.Item>
             <Form.Item
@@ -553,39 +587,79 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
                   style={{ marginBottom: 0 }}
                 >
                   <Space align="start" wrap>
-                    <Form.Item
-                      name="validationType"
-                      label="数据类型校验"
-                      style={{ width: 160 }}
-                    >
-                      <Select placeholder="选择类型" allowClear>
-                        <Select.Option value="string">
-                          字符串 (string)
-                        </Select.Option>
-                        <Select.Option value="number">
-                          数字 (number)
-                        </Select.Option>
-                        <Select.Option value="boolean">
-                          布尔值 (boolean)
-                        </Select.Option>
-                        <Select.Option value="url">URL链接</Select.Option>
-                        <Select.Option value="email">
-                          邮箱 (email)
-                        </Select.Option>
-                        <Select.Option value="integer">
-                          整数 (integer)
-                        </Select.Option>
-                        <Select.Option value="float">
-                          浮点数 (float)
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item name="min" label="最小值/最小长度">
-                      <InputNumber placeholder="Min" style={{ width: 120 }} />
-                    </Form.Item>
-                    <Form.Item name="max" label="最大值/最大长度">
-                      <InputNumber placeholder="Max" style={{ width: 120 }} />
-                    </Form.Item>
+                    {t === 'input' ? (
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <Form.Item
+                          name="minLength"
+                          label="最小长度"
+                          style={{ width: 220 }}
+                        >
+                          <InputNumber
+                            placeholder="Min length"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name="maxLength"
+                          label="最大长度"
+                          style={{ width: 220 }}
+                        >
+                          <InputNumber
+                            placeholder="Max length"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </div>
+                    ) : null}
+
+                    {t === 'number' ? (
+                      <>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                          <Form.Item
+                            name="minValue"
+                            label="最小值 (数值范围)"
+                            style={{ width: 220 }}
+                          >
+                            <InputNumber
+                              placeholder="Min value"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="maxValue"
+                            label="最大值 (数值范围)"
+                            style={{ width: 220 }}
+                          >
+                            <InputNumber
+                              placeholder="Max value"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                          <Form.Item
+                            name="minLength"
+                            label="最小长度 (位数)"
+                            style={{ width: 220 }}
+                          >
+                            <InputNumber
+                              placeholder="Min digits"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="maxLength"
+                            label="最大长度 (位数)"
+                            style={{ width: 220 }}
+                          >
+                            <InputNumber
+                              placeholder="Max digits"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                        </div>
+                      </>
+                    ) : null}
                   </Space>
                   <Form.Item name="pattern" label="正则校验 (Pattern)">
                     <Input placeholder="例如: ^[a-zA-Z0-9]+$" />

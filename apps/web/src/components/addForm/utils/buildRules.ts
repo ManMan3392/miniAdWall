@@ -27,17 +27,19 @@ export const buildRules = (field: any) => {
         }
         const num = typeof value === 'number' ? value : Number(value);
         if (!Number.isNaN(num)) {
-          if (typeof v.min !== 'undefined' && num < v.min) {
+          const minVal = typeof v.minValue !== 'undefined' ? v.minValue : v.min;
+          const maxVal = typeof v.maxValue !== 'undefined' ? v.maxValue : v.max;
+          if (typeof minVal !== 'undefined' && num < minVal) {
             return Promise.reject(
               new Error(
-                v.message || `${field.label || field.name}最小为 ${v.min}`,
+                v.message || `${field.label || field.name}最小为 ${minVal}`,
               ),
             );
           }
-          if (typeof v.max !== 'undefined' && num > v.max) {
+          if (typeof maxVal !== 'undefined' && num > maxVal) {
             return Promise.reject(
               new Error(
-                v.message || `${field.label || field.name}最大为 ${v.max}`,
+                v.message || `${field.label || field.name}最大为 ${maxVal}`,
               ),
             );
           }
@@ -49,16 +51,19 @@ export const buildRules = (field: any) => {
       },
     });
   }
-  if (v.max && v.type !== 'number') {
+  // 字符串长度：支持 minLength/maxLength（优先）和兼容老的 min/max
+  const maxLen = typeof v.maxLength !== 'undefined' ? v.maxLength : v.max;
+  const minLen = typeof v.minLength !== 'undefined' ? v.minLength : v.min;
+  if (typeof maxLen !== 'undefined' && v.type !== 'number') {
     rulesArr.push({
-      max: v.max,
-      message: `${field.label || field.name}最多 ${v.max} 个字`,
+      max: maxLen,
+      message: `${field.label || field.name}最多 ${maxLen} 个字`,
     });
   }
-  if (v.min && v.type !== 'number') {
+  if (typeof minLen !== 'undefined' && v.type !== 'number') {
     rulesArr.push({
-      min: v.min,
-      message: `${field.label || field.name}至少 ${v.min} 个字`,
+      min: minLen,
+      message: `${field.label || field.name}至少 ${minLen} 个字`,
     });
   }
   if (v.type === 'url' || v.pattern === 'url') {
