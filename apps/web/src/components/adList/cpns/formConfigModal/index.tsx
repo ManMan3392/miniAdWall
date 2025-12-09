@@ -285,13 +285,13 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '字段名 (name)',
       dataIndex: 'name',
-      width: 140,
       render: (text: string, _: FieldConfig, index: number) => {
         const isDefault = isDefaultField(fields[index]?.name);
         return (
           <Input
             value={text}
             disabled={isDefault}
+            style={{ width: '100%' }}
             onChange={(e) => handleFieldChange(index, 'name', e.target.value)}
           />
         );
@@ -300,10 +300,10 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '显示名 (label)',
       dataIndex: 'label',
-      width: 180,
       render: (text: string, _: FieldConfig, index: number) => (
         <Input
           value={text}
+          style={{ width: '100%' }}
           onChange={(e) => handleFieldChange(index, 'label', e.target.value)}
         />
       ),
@@ -311,7 +311,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '类型',
       dataIndex: 'type',
-      width: 140,
       render: (text: string, _: FieldConfig, index: number) => {
         const isDefault = isDefaultField(fields[index]?.name);
         return isDefault ? (
@@ -335,7 +334,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '必填',
       dataIndex: 'required',
-      width: 100,
       render: (val: boolean, _: FieldConfig, index: number) => {
         const isDefault = isDefaultField(fields[index]?.name);
         return (
@@ -352,10 +350,10 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '占位符',
       dataIndex: 'placeholder',
-      width: 220,
       render: (text: string, _: FieldConfig, index: number) => (
         <Input
           value={text}
+          style={{ width: '100%' }}
           onChange={(e) =>
             handleFieldChange(index, 'placeholder', e.target.value)
           }
@@ -365,7 +363,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '操作',
       key: 'action',
-      width: 120,
       render: (_: any, record: FieldConfig, index: number) => {
         const isDefault = isDefaultField(record.name);
         if (isDefault) return null;
@@ -429,6 +426,7 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
           size="small"
           scroll={{ y: 400 }}
           bordered
+          style={{ tableLayout: 'fixed' }}
         />
       </Modal>
 
