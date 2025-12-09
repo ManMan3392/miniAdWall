@@ -182,7 +182,7 @@ const AdListHeader: FC<Iprops> = ({
         }}
       >
         <Input.Password
-          placeholder="请输入管理员密码"
+          placeholder="请输入管理员密码：admin"
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
