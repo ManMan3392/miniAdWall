@@ -2,9 +2,13 @@
 
 ## 项目概述
 
-- Mini Ad Wall 是一个极简版广告管理平台，包含后端 API（广告类型、动态表单配置、文件上传、广告 CRUD）与前端管理面板（广告列表、创建/编辑表单、素材上传等文档全部内容）。前端在广告更新与渲染方面做了部分性能优化以减少无用重渲染。
+- Mini Ad Wall 是一个极简版广告管理平台，包含后端 API（广告类型、动态表单配置、文件上传、广告 CRUD）与前端管理面板（广告列表、创建/编辑表单、素材上传等文档全部内容）。
+  另外：
+  前端在广告更新与渲染方面做了部分性能优化以减少无用重渲染。
+  添加了管理员编辑广告类型的功能。
 
 - 线上地址： https://mini-ad-wall-web.vercel.app/
+- 仓库地址：https://github.com/ManMan3392/miniAdWall.git
 
 ## 仓库结构(monorepo)
 
@@ -17,17 +21,17 @@
 - 前端：Vite + React + TypeScript + Ant Design + zmycli（基于vite自研的脚手架，提供了项目模板与提交规范创建（husky + commitlint））
 - 状态管理：zustand（轻量、selector 支持）
 - 包管理：pnpm（适合 monorepo）
-- 部署：pm2；CI 建议 GitHub Actions
+- 部署：pm2；CI：GitHub Actions
 
-理由：选择以开发效率、类型安全、运行性能与个人熟悉度为主。
+理由：选择以开发效率、类型安全、运行性能与个人熟悉度为主。尽量选择了比较经典、高效、易用的工具，有丰富的生态圈，不会遇到小众难以解决的问题。不会因为第三方包的厚重影响项目效率，不会因为api复杂影响开发。
 
 ## 架构概览
 
 - 前后端分离：后端提供 REST API；前端消费 API 并负责页面渲染与交互。
-- 动态表单：后端将表单配置以 JSON 存入 `form_config`；前端根据该配置动态生成表单并映射校验规则。
+- 动态表单：后端将前端新建的表单配置以 JSON 存入 `form_config`；前端根据该配置动态生成表单并映射校验规则。
 - 列表与排序：后端返回按业务公式计算的排序结果，前端乐观更新并延时静默刷新与后端对齐。
 
-## 关键实现说明
+## 关键实现说明(文档要求内容)
 
 ### 动态表单与校验
 
@@ -50,8 +54,6 @@
 
 ### 视频上传
 
-### 视频上传
-
 - 前端流程
   - 触发点：上传由自定义函数处理而非默认 `action`。
   - 本地校验：根据当前组件状态调用内部规则表，对文件做以下校验：
@@ -67,6 +69,23 @@
 
 - 后端流程
   后端对上传的文件做二次校验，校验成功后把文件存储并返回响应。
+
+## 关键实现说明(自行拓展部分)
+
+### 创建广告类型
+
+（开发中发现如果要修改广告类型需要操作数据库非常麻烦，思考了一下在真实业务场景中应该是会在登陆的时候判定不同的账号，管理员账号应该是可以修改广告类型的，又考虑到登录鉴权不属于本次考核的重点，所以着重写了编辑广告类型的表单页面传递json动态渲染，做了一个简单的拦截，密码admin）
+
+在管理面板中新增/编辑/删除广告类型。
+
+- 前端流程（管理面板）：
+  1. 打开“类型管理”弹窗，密码**admin**,点击“新增类型”填写 `type_name` 与 `type_code`；
+  2. 提交时调用 `POST /api/ad-types`，成功后刷新类型列表（`GET /api/ad-types`）；
+  3. 编辑使用 `PUT /api/ad-types/:id`，删除在弹窗中使用确认对话框后调用 `DELETE /api/ad-types/:id`，成功后刷新列表。
+
+在“类型管理”界面，当用户为某广告类型添加或编辑字段时，前端会根据字段属性（字段名、类型、是否必填、占位符、枚举选项、以及校验规则等）动态渲染相应的配置控件与校验规则预览。用户确认配置后，前端会将这些字段定义序列化为标准的表单配置对象（包括 `fields` 列表与元信息如 `formTitle`），并随 `type_code` / `type_name` 一并提交到后端（通过 `POST /api/ad-types` 或 `PUT /api/ad-types/:id`）。
+
+后端接收后会把广告类型元信息写入 `ad_type` 表，同时把表单配置写入 `form_config` 表，后续创建或编辑广告时，前端可根据 `type_code` 调用 `GET /api/form-config?type_code=...` 载入对应配置并动态生成 Ant Design 表单控件。
 
 ### 广告列表合并与性能优化
 
@@ -96,7 +115,7 @@
 1. 安装依赖（workspace 根）
 
 ```bash
-cd /d/bytedancead/adProject
+cd /adProject
 pnpm install
 ```
 
@@ -130,7 +149,7 @@ node scripts/update_form_config.js
 ## 简要 API
 
 - `GET /api/ad-types`
-- `GET /api/form-config/:type_code`
+- `GET /api/form-config?type_code=...`（可选 `config_key`）
 - `POST /api/videos` (上传)
 - `GET /api/ads` (列表)
 - `POST/PUT/DELETE /api/ads`

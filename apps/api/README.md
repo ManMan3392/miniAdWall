@@ -23,7 +23,7 @@
 - GET /api/ads/:id
   - 描述：获取单条广告的权威数据
   - Path 参数：`id`（广告 id）
-  - 返回 data 示例：单个广告对象（同列表中对象结构，推荐包含完整字段）
+  - 返回 data 示例：单个广告对象
 
 - POST /api/ads
   - 描述：创建广告
@@ -62,6 +62,43 @@
 - GET /api/form-config
   - 描述：获取动态表单配置
   - Query 参数：`type_code` (string), `config_key` (string, 可选, 默认 `ad_create_form`)
+
+### 广告类型管理（ad-types）
+
+- POST /api/ad-types
+  - 描述：创建广告类型
+  - 请求体（JSON）：`{ type_code: string, type_name: string }`
+  - 返回示例：`{ code: 200, message: '创建成功', data: { id, type_code, type_name } }`
+  - 常见错误：`400` 参数不完整、`400` 类型编码已存在（重复键）
+
+- PUT /api/ad-types/:id
+  - 描述：更新广告类型
+  - Path 参数：`id`（类型 id）
+  - 请求体（JSON）：`{ type_code: string, type_name: string }`
+  - 返回示例：`{ code: 200, message: '更新成功' }`
+
+- DELETE /api/ad-types/:id
+  - 描述：删除广告类型（为硬删除）。此操作同时清理 `form_config` 表中关联的配置。
+  - Path 参数：`id`（类型 id）
+  - 返回示例：`{ code: 200, message: '删除成功' }` 或 `404`（类型不存在）
+
+### 表单配置（form-config）
+
+- POST /api/form-config
+  - 描述：为指定 `type_code` 写入表单配置（会以 `type_id` 关联并写入 `form_config` 表）
+  - 请求体（JSON）示例：
+    ```json
+    {
+      "type_code": "splash",
+      "config_key": "ad_create_form",
+      "config_value": {
+        "formTitle": "创建开屏广告",
+        "fields": [{ "name": "title", "type": "input", "required": true }]
+      }
+    }
+    ```
+  - 注意：后端会把 `config_value` 以字符串形式保存（如果传入对象，会被序列化）。
+  - 返回示例：`{ code: 200, message: 'Configuration updated successfully' }`
 
 ---
 
