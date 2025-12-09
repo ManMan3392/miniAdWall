@@ -388,15 +388,20 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     {
       title: '占位符',
       dataIndex: 'placeholder',
-      render: (text: string, _: FieldConfig, index: number) => (
-        <Input
-          value={text}
-          style={{ width: '100%' }}
-          onChange={(e) =>
-            handleFieldChange(index, 'placeholder', e.target.value)
-          }
-        />
-      ),
+      render: (text: string, _: FieldConfig, index: number) => {
+        const uploadTypes = ['video-upload', 'file-upload'];
+        const isUpload = uploadTypes.includes(fields[index]?.type);
+        return (
+          <Input
+            value={text}
+            style={{ width: '100%' }}
+            disabled={isUpload}
+            onChange={(e) =>
+              handleFieldChange(index, 'placeholder', e.target.value)
+            }
+          />
+        );
+      },
     },
     {
       title: '操作',
