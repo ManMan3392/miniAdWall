@@ -60,4 +60,24 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/ad-types/:id - hard delete type and related form_config
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ code: 400, message: 'id required' });
+  try {
+    // remove form_config rows that reference this type_id
+    await db.query('DELETE FROM form_config WHERE type_id = ?', [id]);
+
+    // delete the ad_type row
+    const [result] = await db.query('DELETE FROM ad_type WHERE id = ?', [id]);
+    if (result && result.affectedRows === 0) {
+      return res.status(404).json({ code: 404, message: 'Type not found' });
+    }
+    res.json({ code: 200, message: '删除成功' });
+  } catch (err) {
+    console.error('删除广告类型失败', err);
+    res.status(500).json({ code: 500, message: '删除失败' });
+  }
+});
+
 module.exports = router;

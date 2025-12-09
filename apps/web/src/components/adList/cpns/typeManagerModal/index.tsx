@@ -1,8 +1,17 @@
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { Modal, Table, Button, Form, Input, message, Space } from 'antd';
+import {
+  Modal,
+  Table,
+  Button,
+  Form,
+  Input,
+  message,
+  Space,
+  Popconfirm,
+} from 'antd';
 import { useAdStore } from '@/store';
-import { createAdType, updateAdType } from '@/service/ad';
+import { createAdType, updateAdType, deleteAdType } from '@/service/ad';
 import FormConfigModal from '../formConfigModal';
 
 interface TypeManagerModalProps {
@@ -87,6 +96,27 @@ const TypeManagerModal: FC<TypeManagerModalProps> = ({ visible, onCancel }) => {
           <Button type="link" onClick={() => handleConfig(record)}>
             配置表单
           </Button>
+          <Popconfirm
+            title={`确认删除 ${record.type_name} ?`}
+            onConfirm={async () => {
+              try {
+                const res = await deleteAdType(record.id);
+                if (res && res.code === 200) {
+                  message.success('删除成功');
+                  fetchAdTypes();
+                } else {
+                  message.error(res?.message || '删除失败');
+                }
+              } catch (err) {
+                console.error('deleteAdType error', err);
+                message.error('删除请求失败');
+              }
+            }}
+          >
+            <Button type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -120,7 +150,7 @@ const TypeManagerModal: FC<TypeManagerModalProps> = ({ visible, onCancel }) => {
         open={isModalOpen}
         onOk={handleSave}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

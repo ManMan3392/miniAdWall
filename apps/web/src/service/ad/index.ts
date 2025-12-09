@@ -35,6 +35,12 @@ export function updateAdType(
   });
 }
 
+export function deleteAdType(id: number) {
+  return myRequest.request({
+    url: `/api/ad-types/${id}`,
+    method: 'DELETE',
+  });
+}
 export function getFormConfig(typeCode: string, configKey = 'ad_create_form') {
   return myRequest.request({
     url: '/api/form-config',

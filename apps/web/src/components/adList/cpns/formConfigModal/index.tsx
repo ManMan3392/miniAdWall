@@ -473,7 +473,7 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
         open={fieldModalVisible}
         onOk={handleSaveField}
         onCancel={() => setFieldModalVisible(false)}
-        destroyOnClose
+        destroyOnHidden
         width={600}
       >
         <Form form={fieldForm} layout="vertical">
