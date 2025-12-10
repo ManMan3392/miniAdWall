@@ -90,7 +90,6 @@ router.post('/', async (req, res) => {
     const typeId = types[0].id;
     const key = config_key || 'ad_create_form';
 
-    // Ensure config_value is a string
     const valueStr =
       typeof config_value === 'string'
         ? config_value

@@ -1,24 +1,16 @@
 .content {
   width: 100%;
-
-  /* 3vh≈32px →2rem; 3vw 在常规 1920px≈57px，这里取 3.5rem 做近似 */
   padding: 2rem 3.5rem;
   box-sizing: border-box;
   cursor: pointer;
 
   .ad-list {
-    /* 改为自适应三列网格布局，便于后续虚拟化改造 */
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-
-    /* 使用固定间距避免 vw 造成过宽溢出 */
     gap: 24px;
-
-    /* 3vh≈32px →2rem */
     margin-top: 2rem;
   }
 
-  /* 强制子元素占满网格单元，不改动其它组件文件，仅在此覆盖宽度 */
   .ad-list > * {
     width: 100% !important;
   }

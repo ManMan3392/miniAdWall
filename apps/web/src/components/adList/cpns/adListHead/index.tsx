@@ -4,7 +4,7 @@ import style from './style.module.less';
 import { Button, Dropdown, type MenuProps, Modal, Input, message } from 'antd';
 import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import AdModal from '@/components/adModal';
-import TypeManagerModal from '../typeManagerModal';
+import TypeManagerModal from '@/components/adTypeList';
 
 interface Iprops {
   children?: ReactNode;

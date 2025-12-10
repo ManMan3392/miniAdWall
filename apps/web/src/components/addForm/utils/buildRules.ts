@@ -43,6 +43,29 @@ export const buildRules = (field: any) => {
               ),
             );
           }
+          // 数字位数校验
+          if (
+            typeof v.minLength !== 'undefined' &&
+            String(num).length < v.minLength
+          ) {
+            return Promise.reject(
+              new Error(
+                v.message ||
+                  `${field.label || field.name}至少 ${v.minLength} 位数字`,
+              ),
+            );
+          }
+          if (
+            typeof v.maxLength !== 'undefined' &&
+            String(num).length > v.maxLength
+          ) {
+            return Promise.reject(
+              new Error(
+                v.message ||
+                  `${field.label || field.name}最多 ${v.maxLength} 位数字`,
+              ),
+            );
+          }
           return Promise.resolve();
         }
         return Promise.reject(
