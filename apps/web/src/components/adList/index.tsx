@@ -47,7 +47,6 @@ const AdList: FC<Iprops> = () => {
 
   const flushPrices = useCallback(async () => {
     const entries = Object.entries(pendingRef.current || {});
-    console.log('[AdList] flushPrices', entries);
     pendingRef.current = {};
     setFlushTimer(null);
     for (const [id, val] of entries) {

@@ -133,10 +133,11 @@ const AddForm: FC<AddFormProps> = ({
           <>
             {dynamicFields
               .filter((f) => f.type !== 'video-upload')
-              .map((f) => {
+              .map((f, i) => {
                 if (f.type === 'image-upload') {
                   return (
                     <FormImg
+                      key={f.name ?? `image-${i}`}
                       buildRules={buildRules}
                       imageFileLists={imageFileLists}
                       setImageFileLists={setImageFileLists}
@@ -145,7 +146,13 @@ const AddForm: FC<AddFormProps> = ({
                   );
                 }
 
-                return <FormItems f={f} buildRules={buildRules} />;
+                return (
+                  <FormItems
+                    key={f.name ?? `field-${i}`}
+                    f={f}
+                    buildRules={buildRules}
+                  />
+                );
               })}
 
             {dynamicFields.some((f) => f.type === 'video-upload') && (

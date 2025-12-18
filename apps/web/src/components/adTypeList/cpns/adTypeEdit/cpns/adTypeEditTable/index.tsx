@@ -53,8 +53,8 @@ const AdTypeEditTable: FC<Iprops> = ({
     {
       title: '类型',
       dataIndex: 'type',
-      render: (text: string, _: FieldConfig, index: number) => {
-        const isDefault = isDefaultField(fields[index]?.name);
+      render: (text: string, record: FieldConfig, index: number) => {
+        const isDefault = isDefaultField(record.name);
         return isDefault ? (
           <span>{text}</span>
         ) : (
@@ -67,8 +67,6 @@ const AdTypeEditTable: FC<Iprops> = ({
             <Select.Option value="number">数字</Select.Option>
             <Select.Option value="select">下拉</Select.Option>
             <Select.Option value="video-upload">视频</Select.Option>
-            <Select.Option value="image-upload">图片</Select.Option>
-            <Select.Option value="file-upload">文件</Select.Option>
           </Select>
         );
       },
@@ -76,8 +74,8 @@ const AdTypeEditTable: FC<Iprops> = ({
     {
       title: '必填',
       dataIndex: 'required',
-      render: (val: boolean, _: FieldConfig, index: number) => {
-        const isDefault = isDefaultField(fields[index]?.name);
+      render: (val: boolean, record: FieldConfig, index: number) => {
+        const isDefault = isDefaultField(record.name);
         return (
           <Switch
             checked={val}
@@ -92,9 +90,9 @@ const AdTypeEditTable: FC<Iprops> = ({
     {
       title: '占位符',
       dataIndex: 'placeholder',
-      render: (text: string, _: FieldConfig, index: number) => {
-        const uploadTypes = ['video-upload', 'file-upload'];
-        const isUpload = uploadTypes.includes(fields[index]?.type);
+      render: (text: string, record: FieldConfig, index: number) => {
+        const uploadTypes = ['video-upload', 'file-upload', 'select'];
+        const isUpload = uploadTypes.includes(record.type);
         return (
           <Input
             value={text}

@@ -17,7 +17,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   const [formTitle, setFormTitle] = useState('');
   const [fields, setFields] = useState<FieldConfig[]>([]);
 
-  // Field Edit Modal State (modal is only for non-default fields)
   const [fieldModalVisible, setFieldModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<FieldConfig | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
@@ -55,8 +54,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   const handleSaveConfig = async () => {
     try {
       setLoading(true);
-      // Sanitize fields: for DEFAULT_FIELDS keep original props except placeholder
-      // (and do NOT persist placeholder for upload types). Also do NOT persist label changes for default fields.
       const uploadTypes = ['video-upload', 'file-upload'];
       const sanitizedFields = fields.map((f) => {
         const isDefault = isDefaultField(f.name);
@@ -65,7 +62,7 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
         const isUpload = uploadTypes.includes(f.type);
         return {
           ...original,
-          label: original.label, // do not persist label changes for default fields
+          label: original.label,
           placeholder: isUpload ? original.placeholder : f.placeholder,
         } as FieldConfig;
       });
@@ -86,7 +83,6 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
     }
   };
 
-  // Field Operations
   const handleAddField = () => {
     setEditingField(null);
     setEditingIndex(-1);
@@ -95,14 +91,12 @@ const FormConfigModal: React.FC<FormConfigModalProps> = ({
   };
 
   const handleEditField = (record: FieldConfig, index: number) => {
-    // Do not open modal for default fields
     if (isDefaultField(record.name)) return;
     setEditingField(record);
     setEditingIndex(index);
     fieldForm.setFieldsValue({
       ...record,
       enums: record.enums?.join(','),
-      // 支持数字/长度分开存储
       minValue: record.validation?.min,
       maxValue: record.validation?.max,
       minLength: record.validation?.minLength,
